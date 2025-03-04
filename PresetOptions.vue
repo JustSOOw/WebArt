@@ -1,3 +1,13 @@
+<!--
+ * @Author: JustSOOw wang813104@outlook.com
+ * @Date: 2025-03-04 13:43:01
+ * @LastEditors: JustSOOw wang813104@outlook.com
+ * @LastEditTime: 2025-03-04 21:38:39
+ * @FilePath: \WebArt\PresetOptions.vue
+ * @Description: 
+ * 
+ * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+-->
 <template>
   <div class="preset-options">
     <!-- 风格选择 -->
