@@ -38,6 +38,8 @@ const presetFonts = ref([
   { value: 'modern', label: '现代简约体' }
 ])
 
+// 风格选择
+
 const style = ref('')
 const font = ref('')
 </script>
