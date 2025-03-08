@@ -48,7 +48,7 @@ export default {
     Upload
   },
   setup(props, { emit }) {
-    const selectedFont = ref('宋体')
+    const selectedFont = ref('宋体')    //ref创建一个响应式变量
     const uploadedFont = ref(null)
     
     const handleFileChange = (file) => {

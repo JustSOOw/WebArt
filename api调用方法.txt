@@ -1,0 +1,672 @@
+百家姓生成API详情
+更新时间：2025-02-13 11:10:46
+产品详情
+我的收藏
+百家姓生成
+说明
+支持的领域 / 任务：aigc /百家姓生成
+
+WordArt锦书-百家姓生成可以输入姓氏文字进行创意设计，支持根据提示词和风格引导图进行自定义设计，同时提供多种精美的预设风格模板，生成图片可以应用于个性社交场景，如作为个人头像、屏幕壁纸、字体表情包等。
+
+输入内容&效果示意：
+
+image.jpeg
+
+image.jpeg
+
+风格说明：目前支持“自定义”和“预设风格”两种模式，“自定义”模式下，用户可通过提示词（input.prompt）、参考图（input. ref_image_url）和字体相关参数（input.text）进行效果自定义 ；“预设风格”，模式提供12种风格，直接使用预设的风格效果，不支持用户输入提示词（input.prompt）、参考图（input. ref_image_url）和字体相关参数（input.text）进行效果自定义。每一种预设风格具体的示例图如下：
+
+image.png
+
+奇幻楼阁（fantasy_pavilion）
+
+image.png
+
+绝色佳人（peerless_beauty）
+
+image.png
+
+山水楼阁（landscape_pavilion）
+
+image.png
+
+古风建筑（traditional_buildings）
+
+image.webp
+
+青龙女侠（green_dragon_girl）
+
+image.png
+
+樱花烂漫（cherry_blossoms）
+
+image.png
+
+可爱少女（lovely_girl）
+
+image.png
+
+水墨少侠（ink_hero）
+
+image.png
+
+动漫少女（anime_girl）
+
+image.png
+
+水中楼阁（lake_pavilion）
+
+image.png
+
+宁静乡村（tranquil_countryside）
+
+image.png
+
+黄昏美景（dusk_splendor）
+
+应用场景
+百家姓文字制作：围绕百家姓文字设计场景，通过简单的提示词描述即可实现创意字形、艺术纹理和个性字体的智能生成，批量生成丰富有趣的具有特效百家姓艺术字内容的个性化壁纸。
+
+文档艺术字创作：办公文档艺术字创作设计场景，批量生成丰具有特效艺术字内容的个性化百家姓字体嵌入到文档中，围绕百家姓主题实现内容多样性创作和生成。
+
+文字配图创意营销：电商、互动娱乐、视频制作等泛娱乐场景，可根据场景主题风格通过特定的提示词描述生成智能配图的百家姓艺术纹理和个性字体，实现创意文字表情包和姓名个人头像创作。
+
+特色优势
+灵活创意字体打造：通过简单灵活的提示词描述即可实现创意字形、艺术纹理和个性字体的智能打造。
+
+批量稳定特效生成：批量生成丰富有趣的特效艺术百家姓字，在文字的辨识度、创意感、艺术性实现精准可控。
+
+自定义风格迁移：支持传入任意风格参考图，生成百家姓图片的整体风格与客户自定义参考图保持风格一致。
+
+模型概览
+
+
+模型名
+
+模型简介
+
+wordart-surnames
+
+WordArt锦书-百家姓生成可以输入姓氏文字进行创意设计，支持根据提示词和风格引导图进行自定义设计，同时提供多种精美的预设风格模板，生成图片可以应用于个性社交场景，如作为个人头像、屏幕壁纸、字体表情包等。
+
+输入限制
+百家姓生成服务支持两种模式，自定义模式和预设风格模式，通过风格字段（input.style）进行设置。如果设置为自定义模式，提示词（input.prompt）和参考图（input. ref_image_url）至少需要提供一项，如果提供参考图，建议同时提供提示词对图片画面进行具体描述，以保证生成结果更优；如果设置为预设风格模式，用户输入的提示词、参考图以及字体信息将不起作用。
+
+姓氏输入要求：支持1-2个字，不能为空字符串""，仅支持中文（字符的支持范围由ttf文件决定）。
+
+参考图输入要求：建议图片大小小于10M，图像格式推荐jpg/png/jpeg/bmp，宽高比不超过2:1，图像的长边不超过2048。
+
+若提供ttf文件，需为标准的ttf文件，建议文件大小小于30M，input.text.ttf_url和input.text.font_name字段需要二选一。
+
+提示词长度小于1000，且不能为""。
+
+URL地址中不能包含中文字符。
+
+HTTP调用接口
+功能描述
+本模型需要相对较长的算法调用时间，所以在接口层面采用了异步调用的方式进行任务提交，在通过任务接口提交作业之后，系统会返回对应的作业ID，随后可以通过对应的异步作业查询接口获取任务的状态并且在作业到达最终完成态后取回对应的作业结果。
+
+前提条件
+已开通服务并获得API-KEY：获取API Key、配置API Key到环境变量。
+
+说明
+
+接口限制：对单账户（含主账号与RAM子账号）任务下发接口限制QPS为2，并发任务数量限制为1。
+
+作业提交接口调用
+POST https://dashscope.aliyuncs.com/api/v1/services/aigc/wordart/surnames
+
+入参描述
+
+
+
+
+
+
+传参方式
+
+字段
+
+类型
+
+必选
+
+描述
+
+示例值
+
+Header
+
+Content-Type
+
+String
+
+是
+
+请求类型：application/json
+
+application/json
+
+Authorization
+
+String
+
+是
+
+API-Key，例如：Bearer d1**2a
+
+Bearer d1**2a
+
+X-DashScope-Async
+
+String
+
+是
+
+固定使用 enable，表明使用异步方式提交作业。
+
+enable
+
+Body
+
+model
+
+String
+
+是
+
+指明需要调用的模型，固定值
+
+wordart-surnames
+
+input.text
+
+Object
+
+否
+
+文字设置相关的字段
+
+input.text.ttf_url
+
+String
+
+否
+
+用户传入的ttf文件；
+
+标准的ttf文件，建议文件大小小于30M；
+
+仅在input.style取"diy"时生效；
+
+input.text.ttf_url和input.text.font_name 需要二选一
+
+"ttf_url":"https://xxxxx.ttf"
+
+input.text.font_name
+
+String
+
+否
+
+使用预置字体的名称；
+
+仅在input.style取"diy"时生效；input.text.ttf_url和input.text.font_name 需要二选一；
+
+默认为"gufeng1'"
+
+取值类型及说明：
+
+'gufeng1': 古风字体1
+
+'gufeng2': 古风字体2
+
+'gufeng3': 古风字体4
+
+'gufeng4': 古风字体4
+
+'gufeng5': 古风字体5
+
+字体示例图：
+
+'gufeng1':
+
+image.png
+
+'gufeng2':
+
+image.png
+
+'gufeng3':
+
+image.png
+
+'gufeng4':
+
+image.png
+
+'gufeng5':
+
+image.png
+
+"font_name": "gufeng1"
+
+input.text.text_strength
+
+Float
+
+否
+
+生成图片中文字字形的强度，取值范围为[0, 1]，越接近1表示字形强度越大，即生成的字越明显，默认为0.5；
+
+仅在input.style取"diy"时生效；
+
+"text_strength": 0.5
+
+input.text.text_inverse
+
+Bool
+
+否
+
+文字区域的亮暗，取false表示生成图片中文字区域较暗，取true表示生成图片中文字区域较亮，默认为false；
+
+仅在input.style取"diy"时生效；
+
+input.surname
+
+String
+
+是
+
+用户输入的百家姓，支持1-2个字；
+
+不能为空字符串""；
+
+仅支持中文（字符的支持范围由ttf文件决定）
+
+"surname": "赵"
+
+input.prompt
+
+String
+
+否
+
+期望图片创意样式的描述提示词，长度小于1000，不能为""；
+
+仅在input.style取"diy"时生效；
+
+"prompt": "古风，山水画"
+
+input.style
+
+String
+
+否
+
+风格类型，包括“自定义”和“预设风格”两大类，两类风格具体取值和说明如下：
+
+“自定义”取值为"diy"，用户可通过提示词（input.prompt）、参考图（input. ref_image_url ）和字体相关参数（input.text）进行效果自定义，且提示词和参考图至少需要提供一项，如果提供参考图，建议同时提供提示词对图片画面进行具体描述，以保证生成结果更优。若同时提供提示词和参考图，建议参考图侧重用于提供风格的参考，提示词侧重对生成图片的细节描述，提示词应与参考图提供的风格具有一致性，用户可以考虑使用通义千问视觉理解大模型 (Qwen-VL)基于参考图辅助生成提示词。
+
+“预设风格”大类提供12种风格，此类别为预设的风格效果，不支持用户输入提示词（input.prompt）、参考图（input. ref_image_url ）和字体相关参数（input.text）进行效果自定义，取值类型如下：
+
+"fantasy_pavilion": 奇幻楼阁
+
+"peerless_beauty": 绝色佳人
+
+"landscape_pavilion": 山水楼阁
+
+"traditional_buildings": 古风建筑
+
+"green_dragon_girl": 青龙女侠
+
+"cherry_blossoms": 樱花烂漫
+
+"lovely_girl": 可爱少女
+
+"ink_hero": 水墨少侠
+
+"anime_girl": 动漫少女
+
+"lake_pavilion": 水中楼阁
+
+"tranquil_countryside": 宁静乡村
+
+"dusk_splendor": 黄昏美景
+
+默认为"diy"；
+
+"style": "diy"
+
+input. ref_image_url
+
+String
+
+否
+
+风格参考图的地址；
+
+图像要求：图像格式推荐jpg/png/jpeg/bmp，长宽比不大于2，最大边长小于等2048；
+
+仅在input.style取"diy"时生效，在取值为"diy"时也可不提供。
+
+"ref_image_url ":"https://xxxxx"
+
+parameters.n
+
+Integer
+
+否
+
+生成的图片数量，默认为 1，取值范围为[1, 4]
+
+"n": 1
+
+出参描述
+
+
+
+
+字段
+
+类型
+
+描述
+
+示例值
+
+output.task_id
+
+String
+
+本次请求的异步任务的作业 id，实际作业结果需要通过异步任务查询接口获取。
+
+13b1848b-5493-4c0e-8c44-68d038b492af
+
+output.task_status
+
+String
+
+提交异步任务后的作业状态。
+
+PENDING
+
+request_id
+
+String
+
+本次请求的系统唯一码
+
+7574ee8f-38a3-4b1e-9280-11c33ab46e51
+
+请求示例
+以下示例展示通过CURL命令来调用本模型的脚本。
+
+说明
+需要使用您的API-KEY替换示例中的 your-dashscope-api-key ，代码才能正常运行。
+
+ 
+# 自定义模式
+curl --location 'https://dashscope.aliyuncs.com/api/v1/services/aigc/wordart/surnames' \
+--header 'X-DashScope-Async: enable' \
+--header 'Authorization: Bearer <YOUR_DASHSCOPE_API_KEY>' \
+--header 'Content-Type: application/json' \
+--header 'Accept: application/json' \
+--data '{
+    "model": "wordart-surnames",
+    "input":{
+        "text": {
+            "font_name": "gufeng1",
+            "ttf_url": null,
+            "text_strength": 0.5,
+            "text_inverse": false
+        },
+        "surname": "赵",
+        "style": "diy",
+        "prompt": "高山，流水", 
+        "ref_image_url": null
+    },
+    "parameters": {
+        "n": 1
+    }
+}'
+
+
+# 预设风格模式
+curl --location 'https://dashscope.aliyuncs.com/api/v1/services/aigc/wordart/surnames' \
+--header 'X-DashScope-Async: enable' \
+--header 'Authorization: Bearer <YOUR_DASHSCOPE_API_KEY>' \
+--header 'Content-Type: application/json' \
+--header 'Accept: application/json' \
+--data '{
+    "model": "wordart-surnames",
+    "input":{
+        "surname": "赵",
+        "style": "fantasy_pavilion"
+    },
+    "parameters": {
+        "n": 1
+    }
+}'
+响应示例
+ 
+{
+    "output": {
+		"task_id": "a8532587-fa8c-4ef8-82be-0c46b17950d1", 
+    	"task_status": "PENDING"
+    }
+    "request_id": "7574ee8f-38a3-4b1e-9280-11c33ab46e51"
+}
+异常响应示例
+在提交作业请求出错的情况下，输出的结果中会通过 code 和 message 指明出错原因。
+
+ 
+{
+    "code":"InvalidApiKey",
+    "message":"Invalid API-key provided.",
+    "request_id":"fb53c4ec-1c12-4fc4-a580-cdb7c3261fc1"
+}
+作业任务状态查询和结果获取接口
+GET https://dashscope.aliyuncs.com/api/v1/tasks/{task_id}
+
+入参描述
+
+
+
+
+
+
+传参方式
+
+字段
+
+类型
+
+必选
+
+描述
+
+示例值
+
+Url Path
+
+task_id
+
+String
+
+是
+
+需要查询作业的 task_id
+
+13b1848b-5493-4c0e-8c44-68d038b492af
+
+Header
+
+Authorization
+
+String
+
+是
+
+API-Key，例如：Bearer d1**2a
+
+Bearer d1**2a
+
+出参描述
+
+
+
+
+字段
+
+类型
+
+描述
+
+示例值
+
+output.task_id
+
+String
+
+本次请求的异步任务的作业 id，实际作业结果需要通过异步任务查询接口获取。
+
+13b1848b-5493-4c0e-8c44-68d038b492af
+
+output.task_status
+
+String
+
+被查询作业的作业状态
+
+任务状态：
+
+PENDING 排队中
+
+RUNNING 处理中
+
+SUCCEEDED 成功
+
+FAILED 失败
+
+UNKNOWN 作业不存在或状态未知
+
+output.results
+
+Array
+
+如果作业成功，包含模型生成的结果 object，每个 object 中包含按照要求生成的结果地址，输出图片的分辨率为1024x1024。
+
+[ {"url":"https://xxx/1.jpg"},
+
+{"url":"https://xxx/2.jpg"} ]
+
+usage.image_count
+
+Int
+
+本次请求生成图像计量
+
+"image_count": 1
+
+request_id
+
+String
+
+本次请求的系统唯一码
+
+7574ee8f-38a3-4b1e-9280-11c33ab46e51
+
+请求示例
+以下示例展示通过CURL命令来调用本模型的脚本。
+
+说明
+需要使用您的API-KEY替换示例中的 your-dashscope-api-key ，代码才能正常运行。
+
+ 
+curl -X GET \
+--header 'Authorization: Bearer <YOUR-DASHSCOPE-API-KEY>' \
+https://dashscope.aliyuncs.com/api/v1/tasks/86ecf553-d340-4e21-af6e-a0c6a421c010
+响应示例（作业执行中）
+作业提交后将处于排队状态，在得到调度之后将转为运行状态，此时作业的状态为RUNNING，task_metrics将给出具体batch状态；
+
+ 
+{
+    "request_id":"e5d70b02-ebd3-98ce-9fe8-759d7d7b107d",
+    "output":{
+        "task_id":"86ecf553-d340-4e21-af6e-a0c6a421c010",
+        "task_status":"RUNNING",
+        "task_metrics":{
+            "TOTAL":1,
+            "SUCCEEDED":1,
+            "FAILED":0
+        }
+    }
+}
+响应示例（作业成功执行完毕）
+如果作业执行完成并成功之后，再次查询作业状态，接口将在告知作业状态的同时，一并将作业的结果返回。对于本模型，作业在结束之后的状态会持续保留24小时以备客户随时查询，24小时之后，作业将从系统中清除，相关的结果也将一并清除；对应的，作业生成的结果为图像的URL地址，出于安全考虑，该URL的下载有效期也是24小时，需要用户在获取作业结果后根据需要及时使用或者转存。
+
+ 
+{
+
+    "output":{
+        "task_id":"a8532587-fa8c-4ef8-82be-0c46b17950d1",
+		"task_status":"SUCCEEDED",
+        "results":[
+            {
+                "url":"https://xxx/1.jpg"
+            },
+            {
+                "url":"https://xxx/2.jpg"
+            },
+            {
+                "url":"https://xxx/3.jpg"
+            },
+            {
+                "url":"https://xxx/4.jpg"
+            }
+        ]
+    },
+    "usage":{
+        "image_count":4
+    },
+    "request_id":"7574ee8f-38a3-4b1e-9280-11c33ab46e51"
+}
+响应示例（作业失败）
+如果因为某种原因作业失败，则作业状态会设置为FAILED，并且通过code和message字段指明错误原因。
+
+ 
+{
+    "request_id": "7574ee8f-38a3-4b1e-9280-11c33ab46e51"
+  	"output": {
+      "task_id": "a8532587-fa8c-4ef8-82be-0c46b17950d1", 
+    	"task_status": "FAILED",
+    	"code": "xxx", 
+    	"message": "xxxxxx", 
+    }  
+}
+错误码
+如果模型调用失败并返回报错信息，请参见错误码进行解决。
+
+同时本模型还有如下特定错误码：
+
+
+
+
+
+http 返回码*
+
+错误码（code）
+
+错误信息（message）
+
+含义说明
+
+400
+
+InvalidParameter
+
+The request is missing required parameters or the parameters are out of the specified range, please check the parameters that you send
+
+缺少必要的接口调用参数或参数越界

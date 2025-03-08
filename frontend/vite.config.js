@@ -2,7 +2,7 @@
  * @Author: JustSOOw wang813104@outlook.com
  * @Date: 2025-03-05 22:51:33
  * @LastEditors: JustSOOw wang813104@outlook.com
- * @LastEditTime: 2025-03-06 22:21:17
+ * @LastEditTime: 2025-03-08 19:55:56
  * @FilePath: \WebArt\frontend\vite.config.js
  * @Description: 
  * 
