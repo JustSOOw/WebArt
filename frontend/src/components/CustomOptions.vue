@@ -34,32 +34,112 @@
       
       <!-- 字体设置 -->
       <el-form-item label="字体设置">
-        <el-select 
-          v-model="form.fontName" 
-          placeholder="选择字体" 
-          style="width: 100%"
-          :disabled="loading"
-        >
-          <el-option label="古风字体1" value="gufeng1" />
-          <el-option label="古风字体2" value="gufeng2" />
-          <el-option label="古风字体3" value="gufeng3" />
-          <el-option label="古风字体4" value="gufeng4" />
-          <el-option label="古风字体5" value="gufeng5" />
-        </el-select>
+        <div class="font-control">
+          <el-select 
+            v-model="form.fontName" 
+            placeholder="选择字体" 
+            style="width: 65%"
+            :disabled="loading || form.ttfUrl"
+          >
+            <el-option label="古风字体1" value="gufeng1" />
+            <el-option label="古风字体2" value="gufeng2" />
+            <el-option label="古风字体3" value="gufeng3" />
+            <el-option label="古风字体4" value="gufeng4" />
+            <el-option label="古风字体5" value="gufeng5" />
+          </el-select>
+          
+          <el-upload
+            class="ttf-uploader"
+            action="/api/upload-ttf"
+            :show-file-list="false"
+            :on-success="handleTtfUploadSuccess"
+            :before-upload="beforeTtfUpload"
+            :disabled="loading"
+            accept=".ttf"
+          >
+            <el-button 
+              size="default" 
+              type="primary" 
+              :disabled="loading"
+              class="upload-btn"
+            >
+              <el-icon v-if="form.ttfUrl"><Check /></el-icon>
+              <el-icon v-else><Upload /></el-icon>
+              <span class="btn-text">{{ form.ttfUrl ? '已上传' : '上传字体' }}</span>
+            </el-button>
+          </el-upload>
+        </div>
+        <div class="form-tip" v-if="form.ttfUrl">
+          已上传自定义字体文件，将优先使用此字体
+          <el-button 
+            type="text" 
+            size="small" 
+            @click="clearTtfFile" 
+            :disabled="loading"
+          >
+            清除
+          </el-button>
+        </div>
+        <div class="form-tip" v-else>
+          可选择系统字体或上传TTF格式字体文件（小于30MB）
+        </div>
       </el-form-item>
       
       <!-- 字体强度 -->
       <el-form-item label="字体强度">
-        <div class="slider-container">
-          <span class="slider-label">弱</span>
-          <el-slider 
+        <div class="strength-control">
+          <el-input-number 
             v-model="form.textStrength" 
-            :min="0" 
-            :max="1" 
-            :step="0.01"
+            :min="1" 
+            :max="10" 
+            :step="1" 
             :disabled="loading"
+            controls-position="right"
+            style="width: 90px;"
+            size="small"
           />
-          <span class="slider-label">强</span>
+          <div class="preset-buttons">
+            <el-button 
+              size="small" 
+              :type="form.textStrength === 1 ? 'primary' : 'default'" 
+              @click="form.textStrength = 1"
+              :disabled="loading"
+            >
+              极弱
+            </el-button>
+            <el-button 
+              size="small" 
+              :type="form.textStrength === 3 ? 'primary' : 'default'" 
+              @click="form.textStrength = 3"
+              :disabled="loading"
+            >
+              弱
+            </el-button>
+            <el-button 
+              size="small" 
+              :type="form.textStrength === 5 ? 'primary' : 'default'" 
+              @click="form.textStrength = 5"
+              :disabled="loading"
+            >
+              中等
+            </el-button>
+            <el-button 
+              size="small" 
+              :type="form.textStrength === 7 ? 'primary' : 'default'" 
+              @click="form.textStrength = 7"
+              :disabled="loading"
+            >
+              强
+            </el-button>
+            <el-button 
+              size="small" 
+              :type="form.textStrength === 10 ? 'primary' : 'default'" 
+              @click="form.textStrength = 10"
+              :disabled="loading"
+            >
+              极强
+            </el-button>
+          </div>
         </div>
       </el-form-item>
       
@@ -78,13 +158,15 @@
 
 <script>
 import { reactive, watch } from 'vue'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Upload, Check } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
 export default {
   name: 'CustomOptions',
   components: {
-    Plus
+    Plus,
+    Upload,
+    Check
   },
   props: {
     loading: {
@@ -98,8 +180,9 @@ export default {
       prompt: '',
       refImageUrl: null,
       fontName: 'gufeng1',
-      textStrength: 0.5,
-      textInverse: false
+      textStrength: 5,
+      textInverse: false,
+      ttfUrl: null
     })
     
     // 监听表单变化，向父组件发送更新
@@ -134,10 +217,48 @@ export default {
       }
     }
     
+    // TTF文件上传前验证
+    const beforeTtfUpload = (file) => {
+      const isTTF = file.type === 'font/ttf' || file.name.endsWith('.ttf')
+      const isLt30M = file.size / 1024 / 1024 < 30
+      
+      if (!isTTF) {
+        ElMessage.error('请上传TTF格式的字体文件')
+        return false
+      }
+      
+      if (!isLt30M) {
+        ElMessage.error('字体文件大小不能超过30MB')
+        return false
+      }
+      
+      return true
+    }
+    
+    // TTF文件上传成功回调
+    const handleTtfUploadSuccess = (response) => {
+      if (response && response.url) {
+        form.ttfUrl = response.url
+        form.fontName = null // 清空字体选择，优先使用上传的字体
+        ElMessage.success('字体文件上传成功')
+      } else {
+        ElMessage.error('上传失败，请重试')
+      }
+    }
+    
+    // 清除已上传的TTF文件
+    const clearTtfFile = () => {
+      form.ttfUrl = null
+      form.fontName = 'gufeng1' // 恢复默认字体
+    }
+    
     return {
       form,
       beforeUpload,
-      handleUploadSuccess
+      handleUploadSuccess,
+      beforeTtfUpload,
+      handleTtfUploadSuccess,
+      clearTtfFile
     }
   }
 }
@@ -203,6 +324,18 @@ export default {
   gap: 12px;
 }
 
+.strength-control {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.preset-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .slider-label {
   font-size: 14px;
   color: #606266;
@@ -224,5 +357,34 @@ export default {
 
 :deep(.el-slider) {
   flex: 1;
+}
+
+.font-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.ttf-uploader {
+  flex-shrink: 0;
+  width: 20%;
+}
+
+.upload-btn {
+  white-space: nowrap;
+  width: 100%;
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+}
+
+.btn-text {
+  margin-left: 5px;
+}
+
+:deep(.el-button .el-icon) {
+  margin-right: 0;
 }
 </style> 

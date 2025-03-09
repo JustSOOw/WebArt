@@ -19,6 +19,19 @@
 
 <script>
 import { ref } from 'vue'
+// 导入所有图片
+import fantasyPavilion from '../assets/images/fantasy_pavilion.png'
+import peerlessBeauty from '../assets/images/peerless_beauty.png'
+import landscapePavilion from '../assets/images/landscape_pavilion.png'
+import traditionalBuildings from '../assets/images/traditional_buildings.png'
+import greenDragonGirl from '../assets/images/green_dragon_girl.webp'
+import cherryBlossoms from '../assets/images/cherry_blossoms.png'
+import lovelyGirl from '../assets/images/lovely_girl.png'
+import inkHero from '../assets/images/ink_hero.png'
+import animeGirl from '../assets/images/anime_girl.png'
+import lakePavilion from '../assets/images/lake_pavilion.png'
+import tranquilCountryside from '../assets/images/tranquil_countryside.png'
+import duskSplendor from '../assets/images/dusk_splendor.png'
 
 export default {
   name: 'PresetOptions',
@@ -36,62 +49,62 @@ export default {
       {
         label: '奇幻楼阁',
         value: 'fantasy_pavilion',
-        imageUrl: '/styles/fantasy_pavilion.jpg'
+        imageUrl: fantasyPavilion
       },
       {
         label: '绝色佳人',
         value: 'peerless_beauty',
-        imageUrl: '/styles/peerless_beauty.jpg'
+        imageUrl: peerlessBeauty
       },
       {
         label: '山水楼阁',
         value: 'landscape_pavilion',
-        imageUrl: '/styles/landscape_pavilion.jpg'
+        imageUrl: landscapePavilion
       },
       {
         label: '古风建筑',
         value: 'traditional_buildings',
-        imageUrl: '/styles/traditional_buildings.jpg'
+        imageUrl: traditionalBuildings
       },
       {
         label: '青龙女侠',
         value: 'green_dragon_girl',
-        imageUrl: '/styles/green_dragon_girl.jpg'
+        imageUrl: greenDragonGirl
       },
       {
         label: '樱花烂漫',
         value: 'cherry_blossoms',
-        imageUrl: '/styles/cherry_blossoms.jpg'
+        imageUrl: cherryBlossoms
       },
       {
         label: '可爱少女',
         value: 'lovely_girl',
-        imageUrl: '/styles/lovely_girl.jpg'
+        imageUrl: lovelyGirl
       },
       {
         label: '水墨少侠',
         value: 'ink_hero',
-        imageUrl: '/styles/ink_hero.jpg'
+        imageUrl: inkHero
       },
       {
         label: '动漫少女',
         value: 'anime_girl',
-        imageUrl: '/styles/anime_girl.jpg'
+        imageUrl: animeGirl
       },
       {
         label: '水中楼阁',
         value: 'lake_pavilion',
-        imageUrl: '/styles/lake_pavilion.jpg'
+        imageUrl: lakePavilion
       },
       {
         label: '宁静乡村',
         value: 'tranquil_countryside',
-        imageUrl: '/styles/tranquil_countryside.jpg'
+        imageUrl: tranquilCountryside
       },
       {
         label: '黄昏美景',
         value: 'dusk_splendor',
-        imageUrl: '/styles/dusk_splendor.jpg'
+        imageUrl: duskSplendor
       }
     ]
     

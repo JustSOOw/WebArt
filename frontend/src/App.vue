@@ -32,6 +32,7 @@
             
             <!-- 模式选择 -->
             <div class="mode-selector">
+              <!-- taps表，tap-pane表中项，tap-change改变选项卡触发函数 -->
               <el-tabs v-model="activeMode" @tab-change="handleModeChange">
                 <el-tab-pane label="预设风格" name="preset">
                   <preset-options 
@@ -63,6 +64,7 @@
               <div class="image-count-selector">
                 <span>生成数量:</span>
                 <el-select v-model="imageCount" :disabled="loading">
+                  <!-- n默认从1开始 -->
                   <el-option v-for="n in 4" :key="n" :label="n" :value="n" />
                 </el-select>
               </div>
@@ -96,9 +98,9 @@
               v-for="(image, index) in currentImages" 
               :key="index"
               class="thumbnail"
-              :class="{ active: selectedImageIndex === index }"
+              :class="{ active: selectedImageIndex === index }" 
               @click="selectedImageIndex = index"
-            >
+            ><!-- 根据当前选中的图片索引添加active类高亮显示,点击缩略图时更新选中的图片索引 -->
               <img :src="image.url" alt="缩略图" />
             </div>
           </div>
@@ -107,6 +109,7 @@
     </el-container>
     
     <!-- 历史图片对话框 -->
+    <!-- 通过判断historyDialogVisible的值决定是否显示对话框  -->
     <el-dialog
       v-model="historyDialogVisible"
       title="历史生成图片"
@@ -215,6 +218,7 @@ export default {
       for (const image of historyImages.value) {
         if (image.taskId !== currentTaskId) {
           if (currentGroup.length > 0) {
+            // 当切换到新的任务时，将当前分组添加到结果中,...是扩展运算符，将currentGroup数组中的元素逐个添加到新数组中
             groups.push([...currentGroup])
           }
           currentGroup = [image]
