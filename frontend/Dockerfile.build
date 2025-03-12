@@ -1,0 +1,10 @@
+# Build stage
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# 使这个容器保持运行，以便卷挂载可以工作
+CMD ["tail", "-f", "/dev/null"] 

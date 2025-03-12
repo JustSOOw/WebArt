@@ -7,6 +7,16 @@
           <h1>WordArt锦书 - 百家姓生成</h1>
         </div>
         <div class="header-actions">
+          <user-profile 
+            v-if="isLoggedIn" 
+            :user="currentUser" 
+            @logout="handleLogout"
+            @show-history="showHistory"
+          />
+          <el-button v-else type="primary" @click="showUserDialog">
+            <el-icon><User /></el-icon>
+            登录/注册
+          </el-button>
           <el-button type="primary" @click="showHistory">
             <el-icon><Picture /></el-icon>
             历史图片
@@ -155,22 +165,33 @@
         </div>
       </template>
     </el-dialog>
+    
+    <!-- 用户登录/注册对话框 -->
+    <user-dialog
+      v-model:visible="userDialogVisible"
+      :initial-mode="userDialogMode"
+      @auth-success="handleAuthSuccess"
+    />
   </div>
 </template>
 
 <script>
 import { ref, computed, reactive, onMounted, watch } from 'vue'
-import { Picture } from '@element-plus/icons-vue'
+import { Picture, User } from '@element-plus/icons-vue'
 import { ElMessage, ElLoading } from 'element-plus'
 import PresetOptions from './components/PresetOptions.vue'
 import CustomOptions from './components/CustomOptions.vue'
+import { UserProfile, UserDialog } from './components/auth'
+import { isAuthenticated, getCurrentUser, logout } from './utils/auth'
 
 export default {
   name: 'App',
   components: {
     PresetOptions,
     CustomOptions,
-    Picture
+    Picture,
+    UserProfile,
+    UserDialog
   },
   setup() {
     // 基本状态
@@ -196,6 +217,12 @@ export default {
       textStrength: 0.5,
       textInverse: false
     })
+    
+    // 用户相关状态
+    const isLoggedIn = ref(false)
+    const currentUser = ref(null)
+    const userDialogVisible = ref(false)
+    const userDialogMode = ref('login')
     
     // 计算属性
     const isFormValid = computed(() => {
@@ -284,12 +311,20 @@ export default {
           }
         }
         
+        // 添加认证头
+        const headers = {
+          'Content-Type': 'application/json'
+        }
+        
+        // 如果用户已登录，添加认证头
+        if (isLoggedIn.value) {
+          headers['Authorization'] = `Bearer ${localStorage.getItem('auth_token')}`
+        }
+        
         // 提交任务
         const taskResponse = await fetch('/api/generate', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers,
           body: JSON.stringify(payload)
         })
         
@@ -318,6 +353,11 @@ export default {
           
           // 添加到历史记录
           historyImages.value = [...newImages, ...historyImages.value]
+          
+          // 如果用户已登录，保存图片到服务器
+          if (isLoggedIn.value) {
+            saveImagesToServer(newImages)
+          }
           
           ElMessage.success('图片生成成功')
         } else {
@@ -438,8 +478,78 @@ export default {
       }
     }
     
+    const showUserDialog = () => {
+      userDialogVisible.value = true
+      userDialogMode.value = 'login'
+    }
+    
+    const handleAuthSuccess = (user) => {
+      isLoggedIn.value = true
+      currentUser.value = user
+      userDialogVisible.value = false
+      
+      // 获取用户的图片
+      fetchUserImages()
+    }
+    
+    const handleLogout = async () => {
+      try {
+        // 调用后端登出接口
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          }
+        })
+      } catch (error) {
+        console.error('登出请求失败:', error)
+      }
+      
+      // 无论后端请求是否成功，都清除本地状态
+      logout()
+      isLoggedIn.value = false
+      currentUser.value = null
+    }
+    
+    // 获取图片列表
+    const fetchUserImages = async () => {
+      if (!isLoggedIn.value) return
+      
+      try {
+        const response = await fetch('/api/images', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          // 合并用户的图片到历史记录中
+          if (data.images && data.images.length > 0) {
+            // 将服务器返回的图片添加到历史记录中，避免重复
+            const existingTaskIds = new Set(historyImages.value.map(img => img.taskId))
+            const newImages = data.images.filter(img => !existingTaskIds.has(img.task_id))
+              .map(img => ({
+                url: img.url,
+                taskId: img.task_id,
+                surname: img.surname,
+                styleName: img.style_name,
+                createdAt: new Date(img.created_at)
+              }))
+            
+            if (newImages.length > 0) {
+              historyImages.value = [...newImages, ...historyImages.value]
+            }
+          }
+        }
+      } catch (error) {
+        console.error('获取用户图片失败:', error)
+      }
+    }
+    
     // 加载本地存储的历史记录
     onMounted(() => {
+      // 加载历史记录
       const savedHistory = localStorage.getItem('wordart-history')
       if (savedHistory) {
         try {
@@ -448,7 +558,39 @@ export default {
           console.error('解析历史记录失败', e)
         }
       }
+      
+      // 检查用户登录状态
+      if (isAuthenticated()) {
+        isLoggedIn.value = true
+        currentUser.value = getCurrentUser()
+        
+        // 获取用户资料
+        fetchUserProfile()
+      }
     })
+    
+    // 获取用户资料
+    const fetchUserProfile = async () => {
+      if (!isLoggedIn.value) return
+      
+      try {
+        const response = await fetch('/api/auth/profile', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          currentUser.value = data.user
+        } else if (response.status === 401) {
+          // 令牌无效，登出用户
+          handleLogout()
+        }
+      } catch (error) {
+        console.error('获取用户资料失败:', error)
+      }
+    }
     
     // 保存历史记录到本地存储
     const saveHistoryToLocalStorage = () => {
@@ -457,6 +599,39 @@ export default {
     
     // 监听历史记录变化，保存到本地存储
     watch(historyImages, saveHistoryToLocalStorage, { deep: true })
+    
+    // 保存图片到服务器
+    const saveImagesToServer = async (images) => {
+      if (!isLoggedIn.value || !images || images.length === 0) return
+      
+      try {
+        // 构建保存图片的请求数据
+        const saveData = images.map(image => ({
+          task_id: image.taskId,
+          url: image.url,
+          surname: image.surname,
+          style: activeMode.value === 'preset' ? presetStyle.value : 'diy',
+          style_name: image.styleName,
+          prompt: activeMode.value === 'custom' ? customOptions.prompt : null,
+          ref_image_url: activeMode.value === 'custom' ? customOptions.refImageUrl : null,
+          font_name: activeMode.value === 'custom' ? customOptions.fontName : null,
+          text_strength: activeMode.value === 'custom' ? customOptions.textStrength : null,
+          text_inverse: activeMode.value === 'custom' ? customOptions.textInverse : null
+        }))
+        
+        // 发送保存请求
+        await fetch('/api/images/save', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          },
+          body: JSON.stringify({ images: saveData })
+        })
+      } catch (error) {
+        console.error('保存图片到服务器失败:', error)
+      }
+    }
     
     return {
       // 状态
@@ -474,6 +649,10 @@ export default {
       customOptions,
       groupedHistoryImages,
       isFormValid,
+      isLoggedIn,
+      currentUser,
+      userDialogVisible,
+      userDialogMode,
       
       // 方法
       handleModeChange,
@@ -484,7 +663,13 @@ export default {
       formatDate,
       showHistory,
       selectHistoryImage,
-      useSelectedHistoryImage
+      useSelectedHistoryImage,
+      showUserDialog,
+      handleAuthSuccess,
+      handleLogout,
+      fetchUserProfile,
+      fetchUserImages,
+      saveImagesToServer
     }
   }
 }

@@ -16,5 +16,11 @@ COPY . .
 # 暴露端口
 EXPOSE 5000
 
+# 创建启动脚本
+RUN echo '#!/bin/sh\n\
+python init_db.py\n\
+gunicorn --bind 0.0.0.0:5000 "app:create_app()"\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
 # 启动命令
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+CMD ["/app/start.sh"]
