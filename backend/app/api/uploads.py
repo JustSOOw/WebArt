@@ -1,3 +1,13 @@
+'''
+Author: JustSOOw wang813104@outlook.com
+Date: 2025-03-10 13:45:37
+LastEditors: JustSOOw wang813104@outlook.com
+LastEditTime: 2025-03-12 22:08:23
+FilePath: /WebArt/backend/app/api/uploads.py
+Description: 
+
+Copyright (c) 2025 by Furdow, All Rights Reserved. 
+'''
 import os
 from flask import Blueprint, request, jsonify, current_app, send_from_directory
 from werkzeug.utils import secure_filename
@@ -97,4 +107,12 @@ def serve_uploads(filename):
     提供上传文件的访问
     """
     upload_folder = os.path.join(current_app.root_path, 'static/uploads')
-    return send_from_directory(upload_folder, filename) 
+    return send_from_directory(upload_folder, filename)
+
+@uploads_bp.route('/static/<path:filename>', methods=['GET'])
+def serve_static(filename):
+    """
+    提供静态文件的访问
+    """
+    static_folder = os.path.join(current_app.root_path, 'static')
+    return send_from_directory(static_folder, filename) 

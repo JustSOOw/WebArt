@@ -93,11 +93,28 @@
               <p>请在左侧设置参数并点击生成按钮</p>
             </div>
             <div v-else class="image-preview">
-              <img :src="currentImages[selectedImageIndex].url" alt="生成的姓氏图片" class="main-image" />
+              <!-- 添加错误处理 -->
+              <template v-if="currentImages[selectedImageIndex]?.url">
+                <img 
+                  :src="currentImages[selectedImageIndex].url" 
+                  alt="生成的姓氏图片" 
+                  class="main-image" 
+                  @error="handleImageError"
+                />
+              </template>
+              <div v-else class="image-error">
+                <el-alert
+                  title="图片加载失败"
+                  type="error"
+                  description="无法加载图片，可能是URL无效或图片不存在"
+                  show-icon
+                />
+              </div>
+              
               <div class="image-info">
                 <p>姓氏: {{ surname }}</p>
                 <p>风格: {{ getStyleDisplayName() }}</p>
-                <p>生成时间: {{ formatDate(currentImages[selectedImageIndex].createdAt) }}</p>
+                <p>生成时间: {{ formatDate(currentImages[selectedImageIndex]?.createdAt) }}</p>
               </div>
             </div>
           </div>
@@ -110,8 +127,8 @@
               class="thumbnail"
               :class="{ active: selectedImageIndex === index }" 
               @click="selectedImageIndex = index"
-            ><!-- 根据当前选中的图片索引添加active类高亮显示,点击缩略图时更新选中的图片索引 -->
-              <img :src="image.url" alt="缩略图" />
+            >
+              <img :src="image.url" alt="缩略图" @error="handleThumbnailError($event, index)" />
             </div>
           </div>
         </el-main>
@@ -119,7 +136,6 @@
     </el-container>
     
     <!-- 历史图片对话框 -->
-    <!-- 通过判断historyDialogVisible的值决定是否显示对话框  -->
     <el-dialog
       v-model="historyDialogVisible"
       title="历史生成图片"
@@ -129,39 +145,77 @@
       <div v-if="historyImages.length === 0" class="empty-history">
         <el-empty description="暂无历史记录" />
       </div>
-      <div v-else class="history-grid">
-        <div 
-          v-for="(batch, batchIndex) in groupedHistoryImages" 
-          :key="batchIndex"
-          class="history-batch"
+      <div v-else>
+        <el-table
+          :data="tableHistoryImages"
+          style="width: 100%"
+          border
+          stripe
+          :default-sort="{ prop: 'createdAt', order: 'descending' }"
         >
-          <div class="batch-info">
-            <h3>{{ formatDate(batch[0].createdAt) }}</h3>
-            <p>姓氏: {{ batch[0].surname }}</p>
-            <p>风格: {{ batch[0].styleName }}</p>
-          </div>
-          <div class="batch-images">
-            <div 
-              v-for="(image, imageIndex) in batch" 
-              :key="imageIndex"
-              class="history-image"
-              @click="selectHistoryImage(batch, imageIndex)"
-            >
-              <img :src="image.url" alt="历史图片" />
-            </div>
-          </div>
-        </div>
+          <el-table-column
+            prop="createdAt"
+            label="生成时间"
+            sortable
+            width="180"
+            :formatter="(row) => formatDate(row.createdAt)"
+          />
+          <el-table-column
+            prop="surname"
+            label="姓氏"
+            width="100"
+          />
+          <el-table-column
+            prop="styleName"
+            label="风格"
+            width="150"
+          />
+          <el-table-column
+            label="预览图"
+          >
+            <template #default="scope">
+              <div class="history-images-grid">
+                <div 
+                  v-for="(image, index) in scope.row.images" 
+                  :key="index"
+                  class="history-image-item"
+                >
+                  <a 
+                    :href="image.url" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    class="image-link"
+                    @click.prevent="openImageInNewTab(image.url)"
+                  >
+                    <img 
+                      :src="image.url" 
+                      :alt="`${image.surname}_${index+1}`"
+                      class="history-thumbnail"
+                    />
+                  </a>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column
+            label="操作"
+            width="120"
+          >
+            <template #default="scope">
+              <el-button 
+                type="primary" 
+                size="small" 
+                @click="downloadHistoryImages(scope.row.images)"
+              >
+                下载
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
       </div>
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="historyDialogVisible = false">关闭</el-button>
-          <el-button 
-            type="primary" 
-            @click="useSelectedHistoryImage" 
-            :disabled="!selectedHistoryBatch"
-          >
-            使用选中图片
-          </el-button>
         </div>
       </template>
     </el-dialog>
@@ -178,7 +232,7 @@
 <script>
 import { ref, computed, reactive, onMounted, watch } from 'vue'
 import { Picture, User } from '@element-plus/icons-vue'
-import { ElMessage, ElLoading } from 'element-plus'
+import { ElMessage, ElLoading, ElMessageBox } from 'element-plus'
 import PresetOptions from './components/PresetOptions.vue'
 import CustomOptions from './components/CustomOptions.vue'
 import { UserProfile, UserDialog } from './components/auth'
@@ -262,6 +316,27 @@ export default {
       return groups
     })
     
+    // 将历史图片转换为表格数据格式
+    const tableHistoryImages = computed(() => {
+      // 按任务ID分组
+      const groupedByTaskId = {};
+      historyImages.value.forEach(image => {
+        if (!groupedByTaskId[image.taskId]) {
+          groupedByTaskId[image.taskId] = {
+            taskId: image.taskId,
+            surname: image.surname,
+            styleName: image.styleName,
+            createdAt: image.createdAt,
+            images: []
+          };
+        }
+        groupedByTaskId[image.taskId].images.push(image);
+      });
+      
+      // 转换为数组
+      return Object.values(groupedByTaskId);
+    });
+    
     // 方法
     const handleModeChange = (mode) => {
       activeMode.value = mode
@@ -298,14 +373,18 @@ export default {
           payload.input.style = presetStyle.value
         } else {
           payload.input.style = 'diy'
-          payload.input.prompt = customOptions.prompt
+          if (customOptions.prompt) {
+            payload.input.prompt = customOptions.prompt
+          }
           
           if (customOptions.refImageUrl) {
             payload.input.ref_image_url = customOptions.refImageUrl
           }
           
+          // 确保在自定义模式下始终包含text对象
           payload.input.text = {
-            font_name: customOptions.fontName,
+            font_name: customOptions.ttfUrl ? null : customOptions.fontName,
+            ttf_url: customOptions.ttfUrl,
             text_strength: customOptions.textStrength,
             text_inverse: customOptions.textInverse
           }
@@ -321,6 +400,8 @@ export default {
           headers['Authorization'] = `Bearer ${localStorage.getItem('auth_token')}`
         }
         
+        console.log('提交生成请求，payload:', payload);
+        
         // 提交任务
         const taskResponse = await fetch('/api/generate', {
           method: 'POST',
@@ -329,17 +410,24 @@ export default {
         })
         
         if (!taskResponse.ok) {
-          throw new Error('提交任务失败')
+          const errorText = await taskResponse.text();
+          console.error('提交任务失败，状态码:', taskResponse.status, '错误信息:', errorText);
+          throw new Error(`提交任务失败: ${errorText || taskResponse.statusText}`);
         }
         
         const taskData = await taskResponse.json()
+        console.log('任务提交成功，返回数据:', taskData);
         const taskId = taskData.output.task_id
         
         // 轮询任务状态
+        console.log('开始轮询任务状态，任务ID:', taskId);
         const result = await pollTaskStatus(taskId)
+        console.log('任务完成，结果:', result);
         
         // 处理结果
         if (result.output.results && result.output.results.length > 0) {
+          console.log('生成的图片结果:', result.output.results);
+          
           const newImages = result.output.results.map((item, index) => ({
             url: item.url,
             taskId: taskId,
@@ -348,8 +436,14 @@ export default {
             createdAt: new Date()
           }))
           
+          console.log('处理后的图片数据:', newImages);
+          
           currentImages.value = newImages
           selectedImageIndex.value = 0
+          
+          console.log('当前图片数组:', currentImages.value);
+          console.log('选中的图片索引:', selectedImageIndex.value);
+          console.log('当前选中的图片URL:', currentImages.value[selectedImageIndex.value]?.url);
           
           // 添加到历史记录
           historyImages.value = [...newImages, ...historyImages.value]
@@ -361,6 +455,7 @@ export default {
           
           ElMessage.success('图片生成成功')
         } else {
+          console.error('未获取到生成结果，完整响应:', result);
           throw new Error('未获取到生成结果')
         }
       } catch (error) {
@@ -377,17 +472,22 @@ export default {
       const interval = 2000 // 2秒
       
       while (attempts < maxAttempts) {
+        console.log(`轮询任务状态，第 ${attempts + 1} 次尝试`);
         const response = await fetch(`/api/tasks/${taskId}`)
         
         if (!response.ok) {
-          throw new Error('查询任务状态失败')
+          const errorText = await response.text();
+          console.error('查询任务状态失败，状态码:', response.status, '错误信息:', errorText);
+          throw new Error(`查询任务状态失败: ${errorText || response.statusText}`);
         }
         
         const data = await response.json()
+        console.log(`任务状态: ${data.output.task_status}`);
         
         if (data.output.task_status === 'SUCCEEDED') {
           return data
         } else if (data.output.task_status === 'FAILED') {
+          console.error('任务执行失败，详细信息:', data.output);
           throw new Error(data.output.message || '任务执行失败')
         }
         
@@ -436,48 +536,6 @@ export default {
       selectedHistoryImageIndex.value = imageIndex
     }
     
-    const useSelectedHistoryImage = () => {
-      if (!selectedHistoryBatch.value) return
-      
-      const batch = selectedHistoryBatch.value
-      const imageIndex = selectedHistoryImageIndex.value
-      
-      currentImages.value = batch
-      selectedImageIndex.value = imageIndex
-      historyDialogVisible.value = false
-      
-      // 恢复相关设置
-      surname.value = batch[0].surname
-      
-      if (batch[0].styleName === '自定义风格') {
-        activeMode.value = 'custom'
-      } else {
-        activeMode.value = 'preset'
-        // 找到对应的预设风格值
-        const styleEntries = Object.entries({
-          'fantasy_pavilion': '奇幻楼阁',
-          'peerless_beauty': '绝色佳人',
-          'landscape_pavilion': '山水楼阁',
-          'traditional_buildings': '古风建筑',
-          'green_dragon_girl': '青龙女侠',
-          'cherry_blossoms': '樱花烂漫',
-          'lovely_girl': '可爱少女',
-          'ink_hero': '水墨少侠',
-          'anime_girl': '动漫少女',
-          'lake_pavilion': '水中楼阁',
-          'tranquil_countryside': '宁静乡村',
-          'dusk_splendor': '黄昏美景'
-        })
-        
-        for (const [key, value] of styleEntries) {
-          if (value === batch[0].styleName) {
-            presetStyle.value = key
-            break
-          }
-        }
-      }
-    }
-    
     const showUserDialog = () => {
       userDialogVisible.value = true
       userDialogMode.value = 'login'
@@ -524,22 +582,24 @@ export default {
         
         if (response.ok) {
           const data = await response.json()
-          // 合并用户的图片到历史记录中
+          // 对于登录用户，完全使用服务器数据替换本地历史记录
           if (data.images && data.images.length > 0) {
-            // 将服务器返回的图片添加到历史记录中，避免重复
-            const existingTaskIds = new Set(historyImages.value.map(img => img.taskId))
-            const newImages = data.images.filter(img => !existingTaskIds.has(img.task_id))
-              .map(img => ({
-                url: img.url,
-                taskId: img.task_id,
-                surname: img.surname,
-                styleName: img.style_name,
-                createdAt: new Date(img.created_at)
-              }))
+            // 将服务器返回的所有图片转换为本地格式
+            const serverImages = data.images.map(img => ({
+              url: img.url,
+              taskId: img.task_id,
+              surname: img.surname,
+              styleName: img.style_name,
+              createdAt: new Date(img.created_at)
+            }))
             
-            if (newImages.length > 0) {
-              historyImages.value = [...newImages, ...historyImages.value]
-            }
+            // 完全替换本地历史记录
+            historyImages.value = serverImages
+            
+            // 保存到本地存储
+            saveHistoryToLocalStorage()
+            
+            console.log('从服务器加载了', serverImages.length, '张历史图片')
           }
         }
       } catch (error) {
@@ -549,16 +609,6 @@ export default {
     
     // 加载本地存储的历史记录
     onMounted(() => {
-      // 加载历史记录
-      const savedHistory = localStorage.getItem('wordart-history')
-      if (savedHistory) {
-        try {
-          historyImages.value = JSON.parse(savedHistory)
-        } catch (e) {
-          console.error('解析历史记录失败', e)
-        }
-      }
-      
       // 检查用户登录状态
       if (isAuthenticated()) {
         isLoggedIn.value = true
@@ -566,6 +616,19 @@ export default {
         
         // 获取用户资料
         fetchUserProfile()
+        
+        // 获取用户的历史图片（从服务器）
+        fetchUserImages()
+      } else {
+        // 未登录用户才从本地存储加载历史记录
+        const savedHistory = localStorage.getItem('wordart-history')
+        if (savedHistory) {
+          try {
+            historyImages.value = JSON.parse(savedHistory)
+          } catch (e) {
+            console.error('解析历史记录失败', e)
+          }
+        }
       }
     })
     
@@ -633,6 +696,170 @@ export default {
       }
     }
     
+    const handleImageError = (event) => {
+      console.error('主图片加载失败:', event);
+      event.target.classList.add('image-error');
+      // 可以在这里设置一个默认图片
+      // event.target.src = '/path/to/fallback-image.png';
+    }
+    
+    const handleThumbnailError = (event, index) => {
+      console.error(`缩略图 ${index} 加载失败:`, event);
+      event.target.classList.add('thumbnail-error');
+      // 可以在这里设置一个默认图片
+      // event.target.src = '/path/to/fallback-thumbnail.png';
+    }
+    
+    // 在setup函数中添加
+    const isDevelopment = ref(process.env.NODE_ENV === 'development');
+    
+    // 添加下载历史图片的方法
+    const downloadHistoryImages = async (images) => {
+      if (!images || images.length === 0) return;
+      
+      try {
+        // 如果只有一张图片，直接下载
+        if (images.length === 1) {
+          downloadSingleImage(images[0].url, `${images[0].surname}_${images[0].styleName}.png`);
+          return;
+        }
+        
+        // 如果有多张图片，提示用户选择下载方式
+        ElMessageBox.confirm(
+          `共有 ${images.length} 张图片，您想如何下载？`,
+          '下载图片',
+          {
+            confirmButtonText: '全部下载',
+            cancelButtonText: '选择一张',
+            type: 'info',
+          }
+        )
+          .then(() => {
+            // 全部下载
+            images.forEach((image, index) => {
+              setTimeout(() => {
+                downloadSingleImage(
+                  image.url, 
+                  `${image.surname}_${image.styleName}_${index + 1}.png`
+                );
+              }, index * 500); // 间隔下载，避免浏览器阻止
+            });
+            ElMessage.success(`开始下载 ${images.length} 张图片`);
+          })
+          .catch(() => {
+            // 选择一张下载
+            ElMessageBox.prompt(
+              '请输入要下载的图片序号 (1-' + images.length + ')',
+              '选择图片',
+              {
+                confirmButtonText: '下载',
+                cancelButtonText: '取消',
+                inputPattern: new RegExp(`^[1-${images.length}]$`),
+                inputErrorMessage: `请输入1-${images.length}之间的数字`
+              }
+            )
+              .then(({ value }) => {
+                const index = parseInt(value) - 1;
+                downloadSingleImage(
+                  images[index].url, 
+                  `${images[index].surname}_${images[index].styleName}.png`
+                );
+              })
+              .catch(() => {
+                // 用户取消
+              });
+          });
+      } catch (error) {
+        console.error('下载图片失败:', error);
+        ElMessage.error('下载图片失败');
+      }
+    };
+    
+    // 下载单张图片
+    const downloadSingleImage = (url, filename) => {
+      // 创建一个隐藏的a标签
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+    
+    // 添加在浏览器中查看图片的方法
+    const viewImageInBrowser = (url) => {
+      // 创建一个新的标签页
+      const newTab = window.open('', '_blank');
+      
+      // 如果无法创建新标签页，回退到直接打开URL
+      if (!newTab) {
+        window.open(url, '_blank');
+        return;
+      }
+      
+      // 创建一个HTML页面，使用iframe显示图片
+      newTab.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>图片查看器</title>
+          <style>
+            body, html {
+              margin: 0;
+              padding: 0;
+              height: 100%;
+              width: 100%;
+              overflow: hidden;
+              background-color: #1e1e1e;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+            }
+            img {
+              max-width: 100%;
+              max-height: 100%;
+              object-fit: contain;
+            }
+            .toolbar {
+              position: fixed;
+              top: 10px;
+              right: 10px;
+              background-color: rgba(0, 0, 0, 0.5);
+              border-radius: 5px;
+              padding: 5px;
+            }
+            .toolbar button {
+              background-color: #4CAF50;
+              border: none;
+              color: white;
+              padding: 5px 10px;
+              text-align: center;
+              text-decoration: none;
+              display: inline-block;
+              font-size: 14px;
+              margin: 2px;
+              cursor: pointer;
+              border-radius: 3px;
+            }
+          </style>
+        </head>
+        <body>
+          <img src="${url}" alt="图片查看" />
+          <div class="toolbar">
+            <button onclick="window.location.href='${url}'">下载</button>
+          </div>
+        </body>
+        </html>
+      `);
+      newTab.document.close();
+    };
+    
+    // 添加点击图片在新标签页打开的功能
+    const openImageInNewTab = (url) => {
+      viewImageInBrowser(url);
+    };
+    
     return {
       // 状态
       surname,
@@ -653,6 +880,7 @@ export default {
       currentUser,
       userDialogVisible,
       userDialogMode,
+      tableHistoryImages,
       
       // 方法
       handleModeChange,
@@ -663,13 +891,21 @@ export default {
       formatDate,
       showHistory,
       selectHistoryImage,
-      useSelectedHistoryImage,
       showUserDialog,
       handleAuthSuccess,
       handleLogout,
       fetchUserProfile,
       fetchUserImages,
-      saveImagesToServer
+      saveImagesToServer,
+      handleImageError,
+      handleThumbnailError,
+      downloadHistoryImages,
+      downloadSingleImage,
+      viewImageInBrowser,
+      openImageInNewTab,
+      
+      // 计算属性
+      isDevelopment
     }
   }
 }
@@ -1024,5 +1260,105 @@ body {
     width: 120px;
     height: 120px;
   }
+}
+
+/* 历史图片表格样式 */
+.history-images-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.history-image-item {
+  cursor: pointer;
+  transition: all 0.3s;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.history-image-item:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.history-image-item:hover::after {
+  content: '点击查看';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-size: 12px;
+  padding: 2px 0;
+  text-align: center;
+}
+
+.history-thumbnail {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  display: block;
+}
+
+.image-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+}
+
+/* 表格样式优化 */
+.el-table {
+  --el-table-border-color: var(--border-color);
+  --el-table-header-bg-color: var(--background-color);
+}
+
+.el-table th {
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.el-table .el-button {
+  margin: 0;
+}
+
+/* 调试信息样式 */
+.debug-info {
+  background-color: #f8f8f8;
+  border: 1px dashed #ccc;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.debug-info p {
+  margin: 5px 0;
+}
+
+/* 图片错误状态 */
+.image-error {
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  width: 100%;
+  max-width: 600px;
+}
+
+img.image-error {
+  border: 2px solid var(--danger-color);
+  opacity: 0.6;
+}
+
+img.thumbnail-error {
+  border: 2px solid var(--danger-color);
+  opacity: 0.6;
 }
 </style>

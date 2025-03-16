@@ -41,11 +41,11 @@
             style="width: 65%"
             :disabled="loading || form.ttfUrl"
           >
-            <el-option label="古风字体1" value="gufeng1" />
-            <el-option label="古风字体2" value="gufeng2" />
-            <el-option label="古风字体3" value="gufeng3" />
-            <el-option label="古风字体4" value="gufeng4" />
-            <el-option label="古风字体5" value="gufeng5" />
+            <el-option label="古风字体一" value="gufeng1" />
+            <el-option label="古风字体二" value="gufeng2" />
+            <el-option label="古风字体三" value="gufeng3" />
+            <el-option label="古风字体四" value="gufeng4" />
+            <el-option label="古风字体五" value="gufeng5" />
           </el-select>
           
           <el-upload
@@ -90,9 +90,9 @@
         <div class="strength-control">
           <el-input-number 
             v-model="form.textStrength" 
-            :min="1" 
-            :max="10" 
-            :step="1" 
+            :min="0" 
+            :max="1" 
+            :step="0.1" 
             :disabled="loading"
             controls-position="right"
             style="width: 90px;"
@@ -101,40 +101,40 @@
           <div class="preset-buttons">
             <el-button 
               size="small" 
-              :type="form.textStrength === 1 ? 'primary' : 'default'" 
-              @click="form.textStrength = 1"
+              :type="form.textStrength === 0.1 ? 'primary' : 'default'" 
+              @click="form.textStrength = 0.1"
               :disabled="loading"
             >
               极弱
             </el-button>
             <el-button 
               size="small" 
-              :type="form.textStrength === 3 ? 'primary' : 'default'" 
-              @click="form.textStrength = 3"
+              :type="form.textStrength === 0.3 ? 'primary' : 'default'" 
+              @click="form.textStrength = 0.3"
               :disabled="loading"
             >
               弱
             </el-button>
             <el-button 
               size="small" 
-              :type="form.textStrength === 5 ? 'primary' : 'default'" 
-              @click="form.textStrength = 5"
+              :type="form.textStrength === 0.5 ? 'primary' : 'default'" 
+              @click="form.textStrength = 0.5"
               :disabled="loading"
             >
               中等
             </el-button>
             <el-button 
               size="small" 
-              :type="form.textStrength === 7 ? 'primary' : 'default'" 
-              @click="form.textStrength = 7"
+              :type="form.textStrength === 0.7 ? 'primary' : 'default'" 
+              @click="form.textStrength = 0.7"
               :disabled="loading"
             >
               强
             </el-button>
             <el-button 
               size="small" 
-              :type="form.textStrength === 10 ? 'primary' : 'default'" 
-              @click="form.textStrength = 10"
+              :type="form.textStrength === 0.99 ? 'primary' : 'default'" 
+              @click="form.textStrength = 0.99"
               :disabled="loading"
             >
               极强
@@ -180,7 +180,7 @@ export default {
       prompt: '',
       refImageUrl: null,
       fontName: 'gufeng1',
-      textStrength: 5,
+      textStrength: 0.5,
       textInverse: false,
       ttfUrl: null
     })
@@ -387,4 +387,4 @@ export default {
 :deep(.el-button .el-icon) {
   margin-right: 0;
 }
-</style> 
+</style>

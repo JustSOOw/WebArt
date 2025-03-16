@@ -1,8 +1,18 @@
+r'''
+ * @Author: JustSOOw wang813104@outlook.com
+ * @Date: 2025-03-10 11:39:23
+ * @LastEditors: JustSOOw wang813104@outlook.com
+ * @LastEditTime: 2025-03-15 16:40:58
+ * @FilePath: \WebArt\backend\app\api\wordart.py
+ * @Description: 
+ * @
+ * @Copyright (c) 2025 by Furdow, All Rights Reserved. 
+'''
 from flask import Blueprint, request, jsonify, current_app, session
 from flask_login import current_user, login_required
 from app import db
 from app.models import Image
-from app.utils import DashScopeAPI
+from app.utils import DashScopeAPI, download_remote_image
 
 wordart_bp = Blueprint('wordart', __name__)
 
@@ -186,10 +196,15 @@ def save_images():
                 saved_images.append(existing_image.to_dict())
                 continue
             
+            # 下载远程图片到本地服务器
+            remote_url = img_data['url']
+            local_url = download_remote_image(remote_url, 'generated')
+            
             # 创建新图片记录
             image = Image(
                 task_id=img_data['task_id'],
-                url=img_data['url'],
+                url=local_url,
+                original_url=remote_url,  # 保存原始URL以备参考
                 surname=img_data['surname'],
                 style=img_data.get('style'),
                 style_name=img_data.get('style_name'),
@@ -259,9 +274,14 @@ def save_task_results(task_id, results, task_info=None):
     
     # 保存每个图片
     for result in results:
+        # 下载远程图片到本地服务器
+        remote_url = result['url']
+        local_url = download_remote_image(remote_url, 'generated')
+        
         image = Image(
             task_id=task_id,
-            url=result['url'],
+            url=local_url,
+            original_url=remote_url,  # 保存原始URL以备参考
             surname=task_info.get('surname', ''),
             style=task_info.get('style', ''),
             style_name=get_style_display_name(task_info.get('style', '')),

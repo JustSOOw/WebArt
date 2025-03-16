@@ -1,9 +1,9 @@
 '''
 Author: JustSOOw wang813104@outlook.com
-Date: 2025-03-10 11:36:41
+Date: 2025-03-10 13:45:37
 LastEditors: JustSOOw wang813104@outlook.com
-LastEditTime: 2025-03-10 18:35:58
-FilePath: \WebArt\backend\app\models\image.py
+LastEditTime: 2025-03-12 22:08:23
+FilePath: /WebArt/backend/app/models/image.py
 Description: 
 
 Copyright (c) 2025 by Furdow, All Rights Reserved. 
@@ -17,6 +17,7 @@ class Image(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     task_id = db.Column(db.String(64), index=True)
     url = db.Column(db.String(255), nullable=False)
+    original_url = db.Column(db.String(255), nullable=True)
     surname = db.Column(db.String(10), nullable=False)
     style = db.Column(db.String(50))
     style_name = db.Column(db.String(50))
@@ -39,6 +40,7 @@ class Image(db.Model):
             'id': self.id,
             'task_id': self.task_id,
             'url': self.url,
+            'original_url': self.original_url,
             'surname': self.surname,
             'style': self.style,
             'style_name': self.style_name,

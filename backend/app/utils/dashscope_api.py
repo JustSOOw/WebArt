@@ -1,4 +1,13 @@
-import os
+'''
+Author: JustSOOw wang813104@outlook.com
+Date: 2025-03-10 11:37:10
+LastEditors: JustSOOw wang813104@outlook.com
+LastEditTime: 2025-03-15 14:26:55
+Description: 
+
+Copyright (c) 2025 by Furdow, All Rights Reserved. 
+'''
+import os  
 import requests
 import json
 import time

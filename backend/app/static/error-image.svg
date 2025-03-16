@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#f8f8f8" />
+  <rect x="10" y="10" width="380" height="280" fill="white" stroke="#ddd" stroke-width="2" rx="10" ry="10" />
+  <line x1="100" y1="100" x2="300" y2="200" stroke="#f56c6c" stroke-width="4" />
+  <line x1="300" y1="100" x2="100" y2="200" stroke="#f56c6c" stroke-width="4" />
+  <text x="200" y="240" font-family="Arial" font-size="16" text-anchor="middle" fill="#606266">图片加载失败</text>
+</svg> 

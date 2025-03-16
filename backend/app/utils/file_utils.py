@@ -7,115 +7,142 @@ from PIL import Image as PILImage
 
 def allowed_image_file(filename):
     """
-    检查图片文件扩展名是否允许
+    检查文件是否为允许的图片类型
     """
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp'}
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    allowed_extensions = {'png', 'jpg', 'jpeg', 'bmp'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
 def allowed_font_file(filename):
     """
-    检查字体文件扩展名是否允许
+    检查文件是否为允许的字体类型
     """
-    ALLOWED_EXTENSIONS = {'ttf'}
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    allowed_extensions = {'ttf'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
-def save_uploaded_file(file, folder):
+def save_uploaded_file(file, subfolder):
     """
     保存上传的文件
-    
-    Args:
-        file: 上传的文件对象
-        folder: 保存的文件夹名称 ('images' 或 'fonts')
-        
-    Returns:
-        str: 文件的URL路径
     """
-    filename = secure_filename(file.filename)
-    # 生成唯一文件名
-    unique_filename = f"{uuid.uuid4().hex}_{filename}"
-    
-    # 确保目录存在
-    upload_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], folder)
+    # 确保上传目录存在
+    upload_folder = os.path.join(current_app.root_path, 'static/uploads', subfolder)
     os.makedirs(upload_folder, exist_ok=True)
     
+    # 生成安全的文件名
+    filename = secure_filename(file.filename)
+    # 添加随机字符串，避免文件名冲突
+    random_prefix = uuid.uuid4().hex[:8]
+    filename = f"{random_prefix}_{filename}"
+    
     # 保存文件
-    file_path = os.path.join(upload_folder, unique_filename)
+    file_path = os.path.join(upload_folder, filename)
     file.save(file_path)
     
     # 返回文件URL
-    return f"/api/static/uploads/{folder}/{unique_filename}"
-
-def download_remote_image(url, folder='images'):
-    """
-    下载远程图片并保存到本地
-    
-    Args:
-        url: 远程图片URL
-        folder: 保存的文件夹名称
-        
-    Returns:
-        str: 本地文件的URL路径
-    """
-    try:
-        response = requests.get(url, stream=True, timeout=10)
-        response.raise_for_status()
-        
-        # 从URL中提取文件名
-        filename = url.split('/')[-1]
-        if '?' in filename:
-            filename = filename.split('?')[0]
-        
-        # 确保文件名安全
-        filename = secure_filename(filename)
-        if not filename:
-            filename = f"{uuid.uuid4().hex}.jpg"
-        
-        # 生成唯一文件名
-        unique_filename = f"{uuid.uuid4().hex}_{filename}"
-        
-        # 确保目录存在
-        upload_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], folder)
-        os.makedirs(upload_folder, exist_ok=True)
-        
-        # 保存文件
-        file_path = os.path.join(upload_folder, unique_filename)
-        with open(file_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-        
-        # 返回文件URL
-        return f"/api/static/uploads/{folder}/{unique_filename}"
-    except Exception as e:
-        current_app.logger.error(f"Error downloading image: {str(e)}")
-        return None
+    return f"/api/static/uploads/{subfolder}/{filename}"
 
 def validate_image(file_path):
     """
     验证图片文件
-    
-    Args:
-        file_path: 图片文件路径
-        
-    Returns:
-        tuple: (是否有效, 宽, 高)
     """
     try:
         with PILImage.open(file_path) as img:
+            # 检查图片尺寸
             width, height = img.size
             
-            # 检查宽高比
-            aspect_ratio = max(width, height) / min(width, height)
-            if aspect_ratio > 2:
-                return False, width, height, "宽高比不能超过2:1"
+            # 检查图片是否过大
+            if width > 4000 or height > 4000:
+                return False, width, height, "图片尺寸过大，请上传小于4000x4000的图片"
             
-            # 检查最大边长
-            max_dimension = max(width, height)
-            if max_dimension > 2048:
-                return False, width, height, "图像的长边不能超过2048像素"
+            # 检查图片是否过小
+            if width < 100 or height < 100:
+                return False, width, height, "图片尺寸过小，请上传大于100x100的图片"
             
             return True, width, height, None
     except Exception as e:
-        current_app.logger.error(f"Error validating image: {str(e)}")
-        return False, 0, 0, str(e) 
+        return False, 0, 0, f"图片验证失败: {str(e)}"
+
+def download_remote_image(url, subfolder='images'):
+    """
+    下载远程图片到本地服务器
+    
+    Args:
+        url (str): 远程图片URL
+        subfolder (str): 保存的子文件夹
+        
+    Returns:
+        str: 本地图片URL
+    """
+    try:
+        # 如果URL已经是本地URL，直接返回
+        if url and url.startswith('/api/static/uploads/'):
+            current_app.logger.info(f"URL已经是本地URL，无需下载: {url}")
+            return url
+        
+        current_app.logger.info(f"开始下载远程图片: {url}")
+        
+        # 确保上传目录存在
+        upload_folder = os.path.join(current_app.root_path, 'static/uploads', subfolder)
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        # 从URL下载图片
+        response = requests.get(url, stream=True, timeout=10)
+        response.raise_for_status()
+        
+        # 检查内容类型
+        content_type = response.headers.get('Content-Type', '')
+        if not content_type.startswith('image/'):
+            current_app.logger.warning(f"下载的内容不是图片: {content_type}")
+        
+        # 从URL中提取文件名，如果无法提取则生成随机文件名
+        try:
+            filename = os.path.basename(url.split('?')[0])
+            if not filename or '.' not in filename:
+                raise ValueError("无法从URL提取有效文件名")
+        except:
+            # 生成随机文件名
+            ext = '.png'  # 默认扩展名
+            if content_type:
+                # 根据内容类型设置扩展名
+                ext_map = {
+                    'image/jpeg': '.jpg',
+                    'image/png': '.png',
+                    'image/gif': '.gif',
+                    'image/bmp': '.bmp',
+                    'image/webp': '.webp'
+                }
+                ext = ext_map.get(content_type, '.png')
+            
+            filename = f"{uuid.uuid4().hex}{ext}"
+        
+        # 添加随机前缀避免冲突
+        random_prefix = uuid.uuid4().hex[:8]
+        filename = f"{random_prefix}_{filename}"
+        filename = secure_filename(filename)
+        
+        # 保存文件
+        file_path = os.path.join(upload_folder, filename)
+        with open(file_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        
+        # 验证下载的文件是否为有效图片
+        try:
+            with PILImage.open(file_path) as img:
+                # 获取图片尺寸
+                width, height = img.size
+                current_app.logger.info(f"图片下载成功: {filename}, 尺寸: {width}x{height}")
+        except Exception as img_error:
+            current_app.logger.error(f"下载的文件不是有效图片: {str(img_error)}")
+            # 删除无效文件
+            os.remove(file_path)
+            raise ValueError("下载的文件不是有效图片")
+        
+        # 返回本地URL
+        local_url = f"/api/static/uploads/{subfolder}/{filename}"
+        current_app.logger.info(f"图片下载完成，本地URL: {local_url}")
+        return local_url
+    
+    except Exception as e:
+        current_app.logger.error(f"下载图片失败: {str(e)}")
+        # 如果下载失败，返回一个默认的错误图片
+        return "/api/static/error-image.svg"

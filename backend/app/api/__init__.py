@@ -1,4 +1,16 @@
-# API初始化文件
-from app.api.auth import auth_bp
+'''
+Author: JustSOOw wang813104@outlook.com
+Date: 2025-03-10 13:45:37
+LastEditors: JustSOOw wang813104@outlook.com
+LastEditTime: 2025-03-12 22:08:23
+FilePath: /WebArt/backend/app/api/__init__.py
+Description: 
+
+Copyright (c) 2025 by Furdow, All Rights Reserved. 
+'''
+from flask import Blueprint
+
+# 导入蓝图
 from app.api.wordart import wordart_bp
-from app.api.uploads import uploads_bp 
+from app.api.auth import auth_bp
+from app.api.uploads import uploads_bp

@@ -1,9 +1,9 @@
 '''
 Author: JustSOOw wang813104@outlook.com
-Date: 2025-03-10 13:47:31
+Date: 2025-03-10 13:45:37
 LastEditors: JustSOOw wang813104@outlook.com
-LastEditTime: 2025-03-12 11:04:31
-FilePath: \WebArt\backend\manage.py
+LastEditTime: 2025-03-12 22:08:23
+FilePath: /WebArt/backend/manage.py
 Description: 
 
 Copyright (c) 2025 by Furdow, All Rights Reserved. 
