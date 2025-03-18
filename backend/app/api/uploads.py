@@ -83,6 +83,9 @@ def upload_font():
     
     try:
         # 检查文件大小
+        #seek(0, os.SEEK_END) 将文件指针移动到文件末尾
+        #tell() 返回当前文件指针的位置，在末尾时直接返回文件的大小
+        #seek(0) 将文件指针重新移动到文件开头
         file.seek(0, os.SEEK_END)
         file_size = file.tell()
         file.seek(0)

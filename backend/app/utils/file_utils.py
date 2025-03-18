@@ -1,15 +1,27 @@
+r'''
+ * @Author: JustSOOw wang813104@outlook.com
+ * @Date: 2025-03-10 11:37:34
+ * @LastEditors: JustSOOw wang813104@outlook.com
+ * @LastEditTime: 2025-03-17 18:17:13
+ * @FilePath: \WebArt\backend\app\utils\file_utils.py
+ * @Description: 
+ * @
+ * @Copyright (c) 2025 by Furdow, All Rights Reserved. 
+'''
 import os
 import uuid
 import requests
 from flask import current_app
 from werkzeug.utils import secure_filename
-from PIL import Image as PILImage
+from PIL import Image as PILImage   # type: ignore
 
 def allowed_image_file(filename):
     """
     检查文件是否为允许的图片类型
     """
     allowed_extensions = {'png', 'jpg', 'jpeg', 'bmp'}
+    # 检查文件名是否包含点而且判断以点分割后的后缀是否在allowed_extensions中
+    #rsplit('.', 1)[1].lower()以点分割，1表示只分割一次，[1]表示分割后第二个元素，lower()表示转换为小写
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
 def allowed_font_file(filename):
@@ -24,6 +36,7 @@ def save_uploaded_file(file, subfolder):
     保存上传的文件
     """
     # 确保上传目录存在
+    #os.path.join拼接路径
     upload_folder = os.path.join(current_app.root_path, 'static/uploads', subfolder)
     os.makedirs(upload_folder, exist_ok=True)
     
@@ -89,6 +102,7 @@ def download_remote_image(url, subfolder='images'):
         response.raise_for_status()
         
         # 检查内容类型
+        #get第一个参数是key，第二个参数是默认值
         content_type = response.headers.get('Content-Type', '')
         if not content_type.startswith('image/'):
             current_app.logger.warning(f"下载的内容不是图片: {content_type}")

@@ -212,6 +212,39 @@
             </template>
           </el-table-column>
         </el-table>
+        
+        <!-- 添加分页组件 -->
+        <div class="pagination-container">
+          <div class="custom-pagination">
+            <button 
+              class="page-arrow page-prev" 
+              :class="{ disabled: currentPage <= 1 }"
+              @click="handlePrevPage"
+              :disabled="currentPage <= 1"
+              title="上一页"
+            >
+              <i class="el-icon">
+                <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                  <path fill="currentColor" d="M609.408 149.376 277.76 489.6a32 32 0 0 0 0 44.672l331.648 340.352a29.12 29.12 0 0 0 41.728 0 30.592 30.592 0 0 0 0-42.752L339.264 511.936l311.872-319.872a30.592 30.592 0 0 0 0-42.688 29.12 29.12 0 0 0-41.728 0z"></path>
+                </svg>
+              </i>
+            </button>
+            <span class="page-info">第 {{ currentPage }} 页 / 共 {{ totalPages || 1 }} 页</span>
+            <button 
+              class="page-arrow page-next" 
+              :class="{ disabled: currentPage >= totalPages }"
+              @click="handleNextPage"
+              :disabled="currentPage >= totalPages"
+              title="下一页"
+            >
+              <i class="el-icon">
+                <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                  <path fill="currentColor" d="M340.864 149.312a30.592 30.592 0 0 0 0 42.752L652.736 512 340.864 831.872a30.592 30.592 0 0 0 0 42.752 29.12 29.12 0 0 0 41.728 0L714.24 534.336a32 32 0 0 0 0-44.672L382.592 149.376a29.12 29.12 0 0 0-41.728 0z"></path>
+                </svg>
+              </i>
+            </button>
+          </div>
+        </div>
       </div>
       <template #footer>
         <div class="dialog-footer">
@@ -257,6 +290,7 @@ export default {
     // 图片相关状态
     const currentImages = ref([])
     const historyImages = ref([])
+    const allHistoryImages = ref([])
     const selectedImageIndex = ref(0)
     const historyDialogVisible = ref(false)
     const selectedHistoryBatch = ref(null)
@@ -277,6 +311,12 @@ export default {
     const currentUser = ref(null)
     const userDialogVisible = ref(false)
     const userDialogMode = ref('login')
+    
+    // 分页相关状态
+    const currentPage = ref(1)
+    const pageSize = ref(5) // 固定每页显示5项
+    const totalImages = ref(0) // 图片分组后的总数
+    const totalPages = computed(() => Math.ceil(totalImages.value / pageSize.value) || 1) // 确保至少有1页
     
     // 计算属性
     const isFormValid = computed(() => {
@@ -318,8 +358,11 @@ export default {
     
     // 将历史图片转换为表格数据格式
     const tableHistoryImages = computed(() => {
-      // 按任务ID分组
-      const groupedByTaskId = {};
+      console.log('重新计算表格数据...')
+      // 先进行任务ID分组
+      const groupedByTaskId = {}
+      
+      // 使用已经排序好的historyImages (所有图片)
       historyImages.value.forEach(image => {
         if (!groupedByTaskId[image.taskId]) {
           groupedByTaskId[image.taskId] = {
@@ -328,14 +371,28 @@ export default {
             styleName: image.styleName,
             createdAt: image.createdAt,
             images: []
-          };
+          }
         }
-        groupedByTaskId[image.taskId].images.push(image);
-      });
+        groupedByTaskId[image.taskId].images.push(image)
+      })
       
-      // 转换为数组
-      return Object.values(groupedByTaskId);
-    });
+      // 转换为数组（已经排好序了）
+      const allGroups = Object.values(groupedByTaskId)
+      
+      // 打印调试信息
+      console.log(`分组后的总数据项: ${allGroups.length}，当前页: ${currentPage.value}，每页数量: ${pageSize.value}`)
+      
+      // 计算分页
+      const startIndex = (currentPage.value - 1) * pageSize.value
+      const endIndex = Math.min(startIndex + pageSize.value, allGroups.length)
+      
+      // 获取当前页的数据
+      const currentPageData = allGroups.slice(startIndex, endIndex)
+      
+      console.log(`当前页数据: 从${startIndex}到${endIndex}，共${currentPageData.length}条`)
+      
+      return currentPageData
+    })
     
     // 方法
     const handleModeChange = (mode) => {
@@ -446,11 +503,23 @@ export default {
           console.log('当前选中的图片URL:', currentImages.value[selectedImageIndex.value]?.url);
           
           // 添加到历史记录
+          allHistoryImages.value = [...newImages, ...allHistoryImages.value]
           historyImages.value = [...newImages, ...historyImages.value]
           
           // 如果用户已登录，保存图片到服务器
           if (isLoggedIn.value) {
             saveImagesToServer(newImages)
+          }
+          
+          // 如果历史对话框是打开的，确保分页状态正确
+          if (historyDialogVisible.value) {
+            // 若添加了新内容，自动跳到第一页以显示最新内容
+            currentPage.value = 1
+            
+            // 更新总任务数量
+            updateTotalImagesCount()
+            
+            console.log(`生成新图片后，总页数: ${totalPages.value}`)
           }
           
           ElMessage.success('图片生成成功')
@@ -528,6 +597,19 @@ export default {
     
     const showHistory = () => {
       historyDialogVisible.value = true
+      // 每次打开历史对话框，重置为第一页
+      currentPage.value = 1
+      
+      // 触发重新计算总数
+      if (isLoggedIn.value) {
+        // 如果是登录用户，重新获取所有历史图片
+        fetchAllUserImages()
+      } else {
+        // 如果是未登录用户，使用本地数据
+        updateTotalImagesCount()
+      }
+      
+      console.log(`显示历史对话框，总页数: ${totalPages.value}`)
       selectedHistoryBatch.value = null
     }
     
@@ -547,7 +629,7 @@ export default {
       userDialogVisible.value = false
       
       // 获取用户的图片
-      fetchUserImages()
+      fetchAllUserImages()
     }
     
     const handleLogout = async () => {
@@ -569,12 +651,95 @@ export default {
       currentUser.value = null
     }
     
+    // 获取所有历史图片（不分页）
+    const fetchAllUserImages = async () => {
+      if (!isLoggedIn.value) return
+      
+      try {
+        console.log('获取所有历史图片...')
+        // 请求所有图片，使用一个很大的页面大小
+        const response = await fetch(`/api/images?page=1&per_page=1000`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          console.log('获取到历史图片数据:', data)
+          
+          if (data.images && data.images.length > 0) {
+            // 将服务器返回的所有图片转换为本地格式
+            const serverImages = data.images.map(img => ({
+              url: img.url,
+              taskId: img.task_id,
+              surname: img.surname,
+              styleName: img.style_name,
+              createdAt: new Date(img.created_at)
+            }))
+            
+            // 存储所有图片
+            allHistoryImages.value = serverImages
+            
+            // 根据分页设置当前页显示的图片
+            updateCurrentPageImages()
+            
+            // 手动计算总任务数
+            updateTotalImagesCount()
+            
+            // 保存到本地存储
+            saveHistoryToLocalStorage()
+            
+            console.log(`从服务器加载了 ${serverImages.length} 张图片，分组后有 ${totalImages.value} 个任务，共 ${totalPages.value} 页`)
+          } else {
+            console.log('服务器返回的图片数据为空')
+            allHistoryImages.value = []
+            historyImages.value = []
+            totalImages.value = 0
+          }
+        } else {
+          console.error('获取历史图片失败，状态码:', response.status)
+        }
+      } catch (error) {
+        console.error('获取所有历史图片失败:', error)
+      }
+    }
+    
+    // 更新当前页显示的图片
+    const updateCurrentPageImages = () => {
+      // 检查是否有图片，没有则直接返回
+      if (allHistoryImages.value.length === 0) {
+        historyImages.value = []
+        return
+      }
+      
+      // 按创建时间排序（最新的在前面）
+      const sorted = [...allHistoryImages.value].sort((a, b) => 
+        new Date(b.createdAt) - new Date(a.createdAt)
+      )
+      
+      // 设置当前历史图片
+      historyImages.value = sorted
+      
+      console.log(`更新当前页面数据完成，共 ${historyImages.value.length} 张图片`)
+    }
+    
+    // 更新总任务数
+    const updateTotalImagesCount = () => {
+      // 计算唯一任务ID的数量
+      const uniqueTaskIds = new Set()
+      historyImages.value.forEach(img => uniqueTaskIds.add(img.taskId))
+      totalImages.value = uniqueTaskIds.size
+      
+      console.log(`计算出唯一任务ID数量: ${uniqueTaskIds.size}, 总页数: ${totalPages.value}`)
+    }
+    
     // 获取图片列表
     const fetchUserImages = async () => {
       if (!isLoggedIn.value) return
       
       try {
-        const response = await fetch('/api/images', {
+        const response = await fetch(`/api/images?page=${currentPage.value}&per_page=${pageSize.value}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
           }
@@ -596,10 +761,15 @@ export default {
             // 完全替换本地历史记录
             historyImages.value = serverImages
             
+            // 更新总数
+            if (data.total) {
+              totalImages.value = data.total
+            }
+            
             // 保存到本地存储
             saveHistoryToLocalStorage()
             
-            console.log('从服务器加载了', serverImages.length, '张历史图片')
+            console.log('从服务器加载了', serverImages.length, '张历史图片, 总数:', data.total)
           }
         }
       } catch (error) {
@@ -618,13 +788,16 @@ export default {
         fetchUserProfile()
         
         // 获取用户的历史图片（从服务器）
-        fetchUserImages()
+        fetchAllUserImages()
       } else {
         // 未登录用户才从本地存储加载历史记录
         const savedHistory = localStorage.getItem('wordart-history')
         if (savedHistory) {
           try {
-            historyImages.value = JSON.parse(savedHistory)
+            allHistoryImages.value = JSON.parse(savedHistory)
+            historyImages.value = allHistoryImages.value
+            // 手动计算总任务数
+            updateTotalImagesCount()
           } catch (e) {
             console.error('解析历史记录失败', e)
           }
@@ -657,7 +830,7 @@ export default {
     
     // 保存历史记录到本地存储
     const saveHistoryToLocalStorage = () => {
-      localStorage.setItem('wordart-history', JSON.stringify(historyImages.value))
+      localStorage.setItem('wordart-history', JSON.stringify(allHistoryImages.value))
     }
     
     // 监听历史记录变化，保存到本地存储
@@ -860,6 +1033,21 @@ export default {
       viewImageInBrowser(url);
     };
     
+    // 简化分页处理方法
+    const handlePrevPage = () => {
+      if (currentPage.value > 1) {
+        currentPage.value -= 1
+        console.log(`切换到上一页: ${currentPage.value}`)
+      }
+    }
+    
+    const handleNextPage = () => {
+      if (currentPage.value < totalPages.value) {
+        currentPage.value += 1
+        console.log(`切换到下一页: ${currentPage.value}`)
+      }
+    }
+    
     return {
       // 状态
       surname,
@@ -868,6 +1056,7 @@ export default {
       imageCount,
       currentImages,
       historyImages,
+      allHistoryImages,
       selectedImageIndex,
       historyDialogVisible,
       selectedHistoryBatch,
@@ -881,6 +1070,11 @@ export default {
       userDialogVisible,
       userDialogMode,
       tableHistoryImages,
+      // 分页相关
+      currentPage,
+      pageSize,
+      totalImages,
+      totalPages,
       
       // 方法
       handleModeChange,
@@ -895,7 +1089,9 @@ export default {
       handleAuthSuccess,
       handleLogout,
       fetchUserProfile,
-      fetchUserImages,
+      fetchAllUserImages,
+      updateCurrentPageImages,
+      updateTotalImagesCount,
       saveImagesToServer,
       handleImageError,
       handleThumbnailError,
@@ -903,6 +1099,9 @@ export default {
       downloadSingleImage,
       viewImageInBrowser,
       openImageInNewTab,
+      // 分页方法
+      handlePrevPage,
+      handleNextPage,
       
       // 计算属性
       isDevelopment
@@ -1360,5 +1559,95 @@ img.image-error {
 img.thumbnail-error {
   border: 2px solid var(--danger-color);
   opacity: 0.6;
+}
+
+/* 添加分页容器样式 */
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+/* 自定义分页样式 */
+.custom-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  border-radius: 25px;
+  padding: 8px 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.custom-pagination:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.page-arrow {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  background-color: #f5f7fa;
+  color: #606266;
+  transition: all 0.3s ease;
+  margin: 0 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.page-arrow::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(64, 158, 255, 0.2) 0%, rgba(64, 158, 255, 0) 70%);
+  transform: scale(0);
+  transition: transform 0.4s ease;
+}
+
+.page-arrow:hover::before {
+  transform: scale(2);
+}
+
+.page-arrow:hover {
+  background-color: var(--primary-color);
+  color: white;
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(64, 158, 255, 0.4);
+}
+
+.page-arrow:active {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(64, 158, 255, 0.3);
+}
+
+.page-arrow.disabled {
+  background-color: #f5f7fa;
+  color: #c0c4cc;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.page-arrow.disabled:hover::before {
+  transform: scale(0);
+}
+
+.page-info {
+  margin: 0 16px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #606266;
+  min-width: 120px;
+  text-align: center;
 }
 </style>

@@ -1,4 +1,4 @@
-import jwt
+import jwt # type: ignore
 import datetime
 from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_user, logout_user, login_required, current_user
@@ -15,6 +15,7 @@ def register():
     data = request.get_json()
     
     # 验证必要字段
+    #生成器表达式：如果data中没有username、email、password这三个键，则返回False，否则返回True
     if not all(k in data for k in ('username', 'email', 'password')):
         return jsonify({'error': '缺少必要字段'}), 400
     

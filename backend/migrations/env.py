@@ -1,6 +1,13 @@
-
-
-
+r'''
+ * @Author: JustSOOw wang813104@outlook.com
+ * @Date: 2025-03-10 13:46:10
+ * @LastEditors: JustSOOw wang813104@outlook.com
+ * @LastEditTime: 2025-03-16 14:52:50
+ * @FilePath: \WebArt\backend\migrations\env.py
+ * @Description: alembic环境文件
+ * @
+ * @Copyright (c) 2025 by Furdow, All Rights Reserved. 
+'''
 from __future__ import with_statement
 
 import logging
@@ -10,17 +17,16 @@ from flask import current_app
 
 from alembic import context
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
+# 这是Alembic配置对象，它提供了对正在使用的.ini文件中的值的访问
 config = context.config
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
+# 解析Python日志的配置文件
+# 这行代码基本上设置了日志记录器
 fileConfig(config.config_file_name)
 logger = logging.getLogger('alembic.env')
 
-# add your model's MetaData object here
-# for 'autogenerate' support
+# 在这里添加你的模型的MetaData对象
+# 用于'autogenerate'支持
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 config.set_main_option(
@@ -29,23 +35,20 @@ config.set_main_option(
         '%', '%%'))
 target_metadata = current_app.extensions['migrate'].db.metadata
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
+# 可以获取配置中的其他值，根据env.py的需要定义：
 # my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+# ... 等等
 
 
 def run_migrations_offline():
-    """Run migrations in 'offline' mode.
+    """以'离线'模式运行迁移。
 
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
+    这只需配置一个URL而不是引擎，
+    尽管这里也可以接受引擎。通过跳过引擎创建，
+    我们甚至不需要DBAPI可用。
 
-    Calls to context.execute() here emit the given string to the
-    script output.
-
+    这里对context.execute()的调用会将给定的字符串
+    输出到脚本输出。
     """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
@@ -57,22 +60,21 @@ def run_migrations_offline():
 
 
 def run_migrations_online():
-    """Run migrations in 'online' mode.
+    """以'在线'模式运行迁移。
 
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
+    在这种情况下，我们需要创建一个引擎
+    并将连接与上下文关联。
     """
 
-    # this callback is used to prevent an auto-migration from being generated
-    # when there are no changes to the schema
-    # reference: http://alembic.zzzcomputing.com/en/latest/cookbook.html
+    # 这个回调用于防止在没有模式更改时
+    # 自动生成迁移
+    # 参考：http://alembic.zzzcomputing.com/en/latest/cookbook.html
     def process_revision_directives(context, revision, directives):
         if getattr(config.cmd_opts, 'autogenerate', False):
             script = directives[0]
             if script.upgrade_ops.is_empty():
                 directives[:] = []
-                logger.info('No changes in schema detected.')
+                logger.info('未检测到模式变化。')
 
     connectable = current_app.extensions['migrate'].db.get_engine()
 

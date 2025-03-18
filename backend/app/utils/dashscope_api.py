@@ -19,6 +19,7 @@ class DashScopeAPI:
     """
     
     def __init__(self, api_key=None):
+        #如果api_key不为空，则使用api_key，否则使用current_app.config['DASHSCOPE_API_KEY']，短路逻辑
         self.api_key = api_key or current_app.config['DASHSCOPE_API_KEY']
         self.base_url = 'https://dashscope.aliyuncs.com/api/v1'
         self.headers = {
@@ -45,6 +46,7 @@ class DashScopeAPI:
         
         try:
             response = requests.post(url, headers=self.headers, json=payload)
+            #检查响应状态码，若不是2xx，则抛出异常
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
