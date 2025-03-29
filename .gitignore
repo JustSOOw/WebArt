@@ -31,6 +31,11 @@ Thumbs.db
 # Docker相关
 .docker/
 docker-compose.override.yml
+.dockerignore
+
+# Docker构建缓存
+.docker-cache/
+.docker-tmp/
 
 # 缓存文件
 .cache/
@@ -40,6 +45,8 @@ docker-compose.override.yml
 *.dev
 *dev.*
 *.db
+.cursor/*
+*.log
 
 # Python缓存文件
 __pycache__/

@@ -1,0 +1,22 @@
+/* 全局基础样式 */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#app {
+  height: 100%;
+}
+
+/* 聊天页面特定样式 */
+.chat-page {
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 其他页面样式 */
+.other-page {
+  min-height: 100vh;
+  overflow-y: auto;
+} 

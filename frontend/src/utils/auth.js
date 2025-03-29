@@ -62,7 +62,25 @@ export const removeCurrentUser = () => {
  * @returns {boolean} 是否已登录
  */
 export const isAuthenticated = () => {
-  return !!getToken() && !!getCurrentUser()
+  const token = getToken()
+  const user = getCurrentUser()
+  
+  // 确保令牌和用户信息都存在
+  if (!token || !user) {
+    return false
+  }
+  
+  // 检查用户信息是否有效
+  if (!user.id || !user.username) {
+    // 如果用户信息不完整，清理存储
+    removeToken()
+    removeCurrentUser()
+    return false
+  }
+  
+  // 可以增加令牌过期检查（如果令牌包含过期时间）
+  
+  return true
 }
 
 /**
@@ -89,22 +107,47 @@ export const getAuthHeaders = () => {
  * @returns {Promise} 请求Promise
  */
 export const authFetch = async (url, options = {}) => {
-  const headers = {
-    ...options.headers,
-    ...getAuthHeaders(),
-    'Content-Type': 'application/json'
+  const baseUrl = 'http://localhost';
+  const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
+  
+  // 准备请求选项
+  const fetchOptions = { ...options };
+  fetchOptions.headers = fetchOptions.headers || {};
+  
+  // 添加认证头
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    fetchOptions.headers['Authorization'] = `Bearer ${token}`;
   }
   
-  const response = await fetch(url, {
-    ...options,
-    headers
-  })
-  
-  // 如果返回401未授权，清除认证信息
-  if (response.status === 401) {
-    logout()
-    throw new Error('登录已过期，请重新登录')
+  // 添加标准内容类型（如果未指定）
+  if (!fetchOptions.headers['Content-Type'] && fetchOptions.method !== 'GET') {
+    fetchOptions.headers['Content-Type'] = 'application/json';
   }
   
-  return response
+  try {
+    console.log(`发送请求到: ${fullUrl}`, fetchOptions);
+    const response = await fetch(fullUrl, fetchOptions);
+    
+    // 处理认证错误
+    if (response.status === 401) {
+      console.warn('认证失败，清除登录状态');
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user_info');
+      
+      // 如果是API请求，不要重定向（让调用方处理）
+      if (url.includes('/api/')) {
+        return response;
+      }
+      
+      // 对于页面请求，重定向到登录页
+      window.location.href = '/login';
+      return response;
+    }
+    
+    return response;
+  } catch (error) {
+    console.error(`请求失败: ${fullUrl}`, error);
+    throw error;
+  }
 } 

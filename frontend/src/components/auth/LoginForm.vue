@@ -39,7 +39,7 @@
       
       <div class="form-footer">
         <span>还没有账号？</span>
-        <el-button type="text" @click="$emit('switch-mode', 'register')">
+        <el-button link @click="$emit('switch-mode', 'register')">
           立即注册
         </el-button>
       </div>

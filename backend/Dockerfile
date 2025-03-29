@@ -10,6 +10,13 @@ COPY requirements.txt .
 # 安装依赖
 RUN pip install --no-cache-dir -r requirements.txt
 
+# 创建静态目录和上传文件夹
+RUN mkdir -p /app/static/uploads/images \
+    /app/static/uploads/audio \
+    /app/static/uploads/video \
+    /app/static/uploads/documents \
+    && chmod -R 777 /app/static/uploads
+
 # 复制应用代码
 COPY . .
 

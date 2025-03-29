@@ -1,0 +1,370 @@
+开始使用
+前提条件
+Qwen-Omni 系列模型仅支持 OpenAI 兼容方式调用。您需要已获取API Key并配置API Key到环境变量。如果通过 OpenAI SDK 调用，需要安装SDK（建议参考该文档安装最新SDK，否则可能运行失败）。
+
+OpenAI Python SDK 最低版本为 1.52.0， Node.js SDK 最低版本为 4.68.0。
+文本输入
+Qwen-Omni 模型支持接收纯文本作为输入。当前只支持以流式输出的方式进行调用。
+
+OpenAI 兼容
+PythonNode.jscurl
+
+ 
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key="sk-xxx",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+)
+
+completion = client.chat.completions.create(
+    model="qwen-omni-turbo",
+    messages=[{"role": "user", "content": "你是谁"}],
+    # 设置输出数据的模态，当前仅支持["text"]
+    modalities=["text"],
+    # stream 必须设置为 True，否则会报错
+    stream=True,
+    stream_options={"include_usage": True},
+)
+
+for chunk in completion:
+    if chunk.choices:
+        print(chunk.choices[0].delta)
+    else:
+        print(chunk.usage)
+
+图片+文本输入
+Qwen-Omni 模型支持传入多张图片。对输入图片的要求如下：
+
+单个图片文件的大小不超过10 MB;
+
+图片数量受模型图文总 Token 上限（即最大输入）的限制，所有图片的总 Token 数必须小于模型的最大输入;
+
+图片的宽度和高度均应大于10像素，宽高比不应超过200:1或1:200。
+
+当前只支持以流式输出的方式进行调用。
+
+OpenAI 兼容
+PythonNode.jscurl
+
+ 
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key="sk-xxx",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+)
+
+completion = client.chat.completions.create(
+    model="qwen-omni-turbo",
+    messages=[
+        {
+            "role": "system",
+            "content": [{"type": "text", "text": "You are a helpful assistant."}],
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241022/emyrja/dog_and_girl.jpeg"
+                    },
+                },
+                {"type": "text", "text": "图中描绘的是什么景象？"},
+            ],
+        },
+    ],
+    # 设置输出数据的模态，当前支持["text"]
+    modalities=["text"],
+    # stream 必须设置为 True，否则会报错
+    stream=True,
+    stream_options={
+        "include_usage": True
+    }
+)
+
+for chunk in completion:
+    if chunk.choices:
+        print(chunk.choices[0].delta)
+    else:
+        print(chunk.usage)
+
+音频+文本输入
+只可以输入一个音频文件，大小不能超过 10 MB，时长最长 3 分钟。当前只支持以流式输出的方式进行调用。
+
+OpenAI 兼容
+PythonNode.jscurl
+
+ 
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key="sk-xxx",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+)
+
+completion = client.chat.completions.create(
+    model="qwen-omni-turbo",
+    messages=[
+        {
+            "role": "system",
+            "content": [{"type": "text", "text": "You are a helpful assistant."}],
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "input_audio",
+                    "input_audio": {
+                        "data": "https://dashscope.oss-cn-beijing.aliyuncs.com/audios/welcome.mp3",
+                        "format": "mp3",
+                    },
+                },
+                {"type": "text", "text": "这段音频在说什么"},
+            ],
+        },
+    ],
+    # 设置输出数据的模态，当前支持["text"]
+    modalities=["text"],
+    # stream 必须设置为 True，否则会报错
+    stream=True,
+    stream_options={"include_usage": True},
+)
+
+for chunk in completion:
+    if chunk.choices:
+        print(chunk.choices[0].delta)
+    else:
+        print(chunk.usage)
+
+视频+文本输入
+视频的传入方式可以为图片列表形式或视频文件形式（可理解视频中的音频）。
+
+图片列表形式
+
+最少传入4张图片，最多可传入80张图片。
+
+视频文件形式
+
+视频文件只能输入一个，大小限制为 150 MB，时长限制为 40s。
+
+视频文件中的视觉信息与音频信息会分开计费。
+当前只支持以流式输出的方式进行调用。
+图片列表形式
+OpenAI 兼容
+PythonNode.jscurl
+
+ 
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key="sk-xxx",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+)
+
+completion = client.chat.completions.create(
+    model="qwen-omni-turbo",
+    messages=[
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "video",
+                    "video": [
+                        "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241108/xzsgiz/football1.jpg",
+                        "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241108/tdescd/football2.jpg",
+                        "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241108/zefdja/football3.jpg",
+                        "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241108/aedbqh/football4.jpg",
+                    ],
+                },
+                {"type": "text", "text": "描述这个视频的具体过程"},
+            ],
+        }
+    ],
+    # 设置输出数据的模态，当前支持["text"]
+    modalities=["text"],
+    # stream 必须设置为 True，否则会报错
+    stream=True,
+    stream_options={"include_usage": True},
+)
+
+for chunk in completion:
+    if chunk.choices:
+        print(chunk.choices[0].delta)
+    else:
+        print(chunk.usage)
+
+视频文件形式（可理解视频中的音频）
+OpenAI 兼容
+PythonNode.jscurl
+
+ 
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key="sk-xxx",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+)
+
+completion = client.chat.completions.create(
+    model="qwen-omni-turbo",
+    messages=[
+        {
+            "role": "system",
+            "content": [{"type": "text", "text": "You are a helpful assistant."}],
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "video_url",
+                    "video_url": {
+                        "url": "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241115/cqqkru/1.mp4"
+                    },
+                },
+                {"type": "text", "text": "视频的内容是什么?"},
+            ],
+        },
+    ],
+    # 设置输出数据的模态，当前支持["text"]
+    modalities=["text"],
+    # stream 必须设置为 True，否则会报错
+    stream=True,
+    stream_options={"include_usage": True},
+)
+
+for chunk in completion:
+    if chunk.choices:
+        print(chunk.choices[0].delta)
+    else:
+        print(chunk.usage)
+
+多轮对话
+您在使用 Qwen-Omni 模型的多轮对话功能时，需要注意：
+
+User Message
+
+一条 User Message 只可以包含文本和一种模态的数据，在多轮对话中您可以在不同的 User Message 中输入不同模态的数据。
+
+OpenAI 兼容
+PythonNode.jscurl
+
+ 
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key="sk-xxx",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+)
+
+completion = client.chat.completions.create(
+    model="qwen-omni-turbo",
+    messages=[
+        {
+            "role": "system",
+            "content": [{"type": "text", "text": "You are a helpful assistant."}],
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "input_audio",
+                    "input_audio": {
+                        "data": "https://dashscope.oss-cn-beijing.aliyuncs.com/audios/welcome.mp3",
+                        "format": "mp3",
+                    },
+                },
+                {"type": "text", "text": "这段音频在说什么"},
+            ],
+        },
+        {
+            "role": "assistant",
+            "content": [{"type": "text", "text": "这段音频在说：欢迎使用阿里云"}],
+        },
+        {
+            "role": "user",
+            "content": [{"type": "text", "text": "介绍一下这家公司？"}],
+        },
+    ],
+    # 设置输出数据的模态，当前支持["text"]
+    modalities=["text"],
+    # stream 必须设置为 True，否则会报错
+    stream=True,
+    stream_options={"include_usage": True},
+)
+
+for chunk in completion:
+    if chunk.choices:
+        print(chunk.choices[0].delta)
+    else:
+        print(chunk.usage)
+
+输入 Base64 编码的本地文件
+图片音频视频
+以保存在本地的test.png为例。
+
+PythonNode.js
+
+ 
+import os
+from openai import OpenAI
+import base64
+
+client = OpenAI(
+    # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key="sk-xxx",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+)
+
+
+#  Base64 编码格式
+def encode_image(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode("utf-8")
+
+
+base64_image = encode_image("test.png")
+
+completion = client.chat.completions.create(
+    model="qwen-omni-turbo",
+    messages=[
+        {
+            "role": "system",
+            "content": [{"type": "text", "text": "You are a helpful assistant."}],
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{base64_image}"},
+                },
+                {"type": "text", "text": "图中描绘的是什么景象？"},
+            ],
+        },
+    ],
+    # 设置输出数据的模态，当前支持["text"]
+    modalities=["text"],
+    # stream 必须设置为 True，否则会报错
+    stream=True,
+    stream_options={"include_usage": True},
+)
+
+for chunk in completion:
+    if chunk.choices:
+        print(chunk.choices[0].delta)
+    else:
+        print(chunk.usage)

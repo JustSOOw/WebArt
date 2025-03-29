@@ -1,16 +1,17 @@
 r'''
  * @Author: JustSOOw wang813104@outlook.com
  * @Date: 2025-03-10 11:37:34
- * @LastEditors: JustSOOw wang813104@outlook.com
- * @LastEditTime: 2025-03-17 18:17:13
+ * @LastEditors: AI Assistant
+ * @LastEditTime: 2025-03-22 12:20:00
  * @FilePath: \WebArt\backend\app\utils\file_utils.py
- * @Description: 
+ * @Description: 文件处理工具函数
  * @
  * @Copyright (c) 2025 by Furdow, All Rights Reserved. 
 '''
 import os
 import uuid
 import requests
+import io
 from flask import current_app
 from werkzeug.utils import secure_filename
 from PIL import Image as PILImage   # type: ignore
@@ -19,7 +20,7 @@ def allowed_image_file(filename):
     """
     检查文件是否为允许的图片类型
     """
-    allowed_extensions = {'png', 'jpg', 'jpeg', 'bmp'}
+    allowed_extensions = {'png', 'jpg', 'jpeg', 'bmp', 'gif'}
     # 检查文件名是否包含点而且判断以点分割后的后缀是否在allowed_extensions中
     #rsplit('.', 1)[1].lower()以点分割，1表示只分割一次，[1]表示分割后第二个元素，lower()表示转换为小写
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
@@ -28,7 +29,21 @@ def allowed_font_file(filename):
     """
     检查文件是否为允许的字体类型
     """
-    allowed_extensions = {'ttf'}
+    allowed_extensions = {'ttf', 'otf'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
+def allowed_audio_file(filename):
+    """
+    检查文件是否为允许的音频类型
+    """
+    allowed_extensions = {'mp3', 'wav', 'm4a', 'ogg'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
+def allowed_video_file(filename):
+    """
+    检查文件是否为允许的视频类型
+    """
+    allowed_extensions = {'mp4', 'webm', 'mov'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
 def save_uploaded_file(file, subfolder):
@@ -50,113 +65,119 @@ def save_uploaded_file(file, subfolder):
     file_path = os.path.join(upload_folder, filename)
     file.save(file_path)
     
-    # 返回文件URL
+    # 返回可访问的URL
     return f"/api/static/uploads/{subfolder}/{filename}"
+
+def clean_exif(file_path):
+    """
+    清除图片的EXIF数据
+    
+    Args:
+        file_path: 图片文件路径
+        
+    Returns:
+        bool: 是否成功清除EXIF数据
+    """
+    try:
+        # 打开图片
+        img = PILImage.open(file_path)
+        
+        # 创建一个新的空白图片，与原图大小和模式相同
+        data = list(img.getdata())
+        image_without_exif = PILImage.new(img.mode, img.size)
+        image_without_exif.putdata(data)
+        
+        # 保存没有EXIF的图片
+        image_without_exif.save(file_path)
+        return True
+    except Exception as e:
+        current_app.logger.error(f"清除EXIF数据失败: {str(e)}")
+        return False
 
 def validate_image(file_path):
     """
-    验证图片文件
+    验证图片是否有效以及获取尺寸
     """
     try:
         with PILImage.open(file_path) as img:
-            # 检查图片尺寸
             width, height = img.size
             
-            # 检查图片是否过大
-            if width > 4000 or height > 4000:
-                return False, width, height, "图片尺寸过大，请上传小于4000x4000的图片"
+            # 检查尺寸是否合理
+            if width <= 0 or height <= 0:
+                return False, None, None, "图片尺寸无效"
             
-            # 检查图片是否过小
-            if width < 100 or height < 100:
-                return False, width, height, "图片尺寸过小，请上传大于100x100的图片"
+            # 检查宽高比是否合理
+            aspect_ratio = max(width/height, height/width)
+            if aspect_ratio > 200:
+                return False, None, None, "图片宽高比异常，不应超过200:1或1:200"
+            
+            # 检查文件大小
+            file_size = os.path.getsize(file_path)
+            if file_size > 10 * 1024 * 1024:  # 10MB
+                return False, None, None, "图片文件大小不能超过10MB"
             
             return True, width, height, None
     except Exception as e:
-        return False, 0, 0, f"图片验证失败: {str(e)}"
+        return False, None, None, f"图片验证失败: {str(e)}"
 
 def download_remote_image(url, subfolder='images'):
     """
-    下载远程图片到本地服务器
-    
-    Args:
-        url (str): 远程图片URL
-        subfolder (str): 保存的子文件夹
-        
-    Returns:
-        str: 本地图片URL
+    下载远程图片并保存到本地
     """
     try:
-        # 如果URL已经是本地URL，直接返回
-        if url and url.startswith('/api/static/uploads/'):
-            current_app.logger.info(f"URL已经是本地URL，无需下载: {url}")
-            return url
+        # 发送HTTP请求获取图片
+        response = requests.get(url, stream=True, timeout=10)
         
-        current_app.logger.info(f"开始下载远程图片: {url}")
+        if response.status_code != 200:
+            return None, f"下载图片失败，HTTP状态码：{response.status_code}"
         
-        # 确保上传目录存在
+        # 尝试从Content-Type中获取文件扩展名
+        content_type = response.headers.get('Content-Type', '')
+        ext = '.jpg'  # 默认扩展名
+        
+        if 'image/jpeg' in content_type:
+            ext = '.jpg'
+        elif 'image/png' in content_type:
+            ext = '.png'
+        elif 'image/gif' in content_type:
+            ext = '.gif'
+        elif 'image/bmp' in content_type:
+            ext = '.bmp'
+        
+        # 创建一个唯一的文件名
+        unique_filename = f"{uuid.uuid4().hex}{ext}"
+        
+        # 确保目录存在
         upload_folder = os.path.join(current_app.root_path, 'static/uploads', subfolder)
         os.makedirs(upload_folder, exist_ok=True)
         
-        # 从URL下载图片
-        response = requests.get(url, stream=True, timeout=10)
-        response.raise_for_status()
-        
-        # 检查内容类型
-        #get第一个参数是key，第二个参数是默认值
-        content_type = response.headers.get('Content-Type', '')
-        if not content_type.startswith('image/'):
-            current_app.logger.warning(f"下载的内容不是图片: {content_type}")
-        
-        # 从URL中提取文件名，如果无法提取则生成随机文件名
-        try:
-            filename = os.path.basename(url.split('?')[0])
-            if not filename or '.' not in filename:
-                raise ValueError("无法从URL提取有效文件名")
-        except:
-            # 生成随机文件名
-            ext = '.png'  # 默认扩展名
-            if content_type:
-                # 根据内容类型设置扩展名
-                ext_map = {
-                    'image/jpeg': '.jpg',
-                    'image/png': '.png',
-                    'image/gif': '.gif',
-                    'image/bmp': '.bmp',
-                    'image/webp': '.webp'
-                }
-                ext = ext_map.get(content_type, '.png')
-            
-            filename = f"{uuid.uuid4().hex}{ext}"
-        
-        # 添加随机前缀避免冲突
-        random_prefix = uuid.uuid4().hex[:8]
-        filename = f"{random_prefix}_{filename}"
-        filename = secure_filename(filename)
-        
         # 保存文件
-        file_path = os.path.join(upload_folder, filename)
+        file_path = os.path.join(upload_folder, unique_filename)
+        
+        # 以二进制方式写入文件
         with open(file_path, 'wb') as f:
             for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+                if chunk:
+                    f.write(chunk)
         
         # 验证下载的文件是否为有效图片
         try:
             with PILImage.open(file_path) as img:
-                # 获取图片尺寸
-                width, height = img.size
-                current_app.logger.info(f"图片下载成功: {filename}, 尺寸: {width}x{height}")
-        except Exception as img_error:
-            current_app.logger.error(f"下载的文件不是有效图片: {str(img_error)}")
-            # 删除无效文件
-            os.remove(file_path)
-            raise ValueError("下载的文件不是有效图片")
+                # 如果能打开，说明文件是有效的图片
+                pass
+                
+            # 清除EXIF数据
+            if ext.lower() in ['.jpg', '.jpeg']:
+                clean_exif(file_path)
+            
+            # 返回可访问的URL
+            return f"/api/static/uploads/{subfolder}/{unique_filename}", None
+            
+        except Exception as e:
+            # 如果不是有效图片，删除文件并返回错误
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            return None, f"下载的文件不是有效图片: {str(e)}"
         
-        # 返回本地URL
-        local_url = f"/api/static/uploads/{subfolder}/{filename}"
-        current_app.logger.info(f"图片下载完成，本地URL: {local_url}")
-        return local_url
-    
     except Exception as e:
-        current_app.logger.error(f"下载图片失败: {str(e)}")
-        # 如果下载失败，返回一个默认的错误图片
-        return "/api/static/error-image.svg"
+        return None, f"下载图片失败: {str(e)}"

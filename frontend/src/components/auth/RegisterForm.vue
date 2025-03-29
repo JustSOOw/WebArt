@@ -57,7 +57,7 @@
       
       <div class="form-footer">
         <span>已有账号？</span>
-        <el-button type="text" @click="$emit('switch-mode', 'login')">
+        <el-button link @click="$emit('switch-mode', 'login')">
           立即登录
         </el-button>
       </div>
