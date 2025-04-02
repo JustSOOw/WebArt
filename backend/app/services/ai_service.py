@@ -247,8 +247,8 @@ class AIService:
         request_data = {
             "model": model_config["model_id"],
             "messages": messages,
-            # 设置输出数据的模态，当前仅支持["text"]
-            "modalities": ["text"],
+            # 设置输出数据的模态，当前仅支持["text"] - 移除，让API自动推断
+            # "modalities": ["text"], 
             # stream 必须设置为 True，否则会报错
             "stream": True,
             "temperature": temperature,

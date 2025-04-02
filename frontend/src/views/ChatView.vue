@@ -29,7 +29,7 @@
             @select-conversation="handleSelectConversation"
             @new-conversation="handleNewConversation"
             @delete-conversation="deleteConversation"
-            @rename-conversation="updateConversationTitle"
+            @rename-conversation="renameConversation"
           />
         </el-aside>
         
@@ -55,11 +55,12 @@
             <chat-input 
               :loading="isProcessing"
               :supported-file-types="supportedFileTypes"
-              :max-file-size="maxFileSize"
               :show-upload="currentModelCapabilities.includes('image')"
+              :model-id="currentModel"
               @send-message="sendMessage"
               @upload-file="handleFileUpload"
               @upload-files="handleMultiFileUpload"
+              @send-multi-images="handleSendMultiImages"
             />
           </div>
         </el-main>
@@ -178,29 +179,7 @@ export default {
       return types
     })
     
-    // 根据文件类型设置合适的大小限制
-    const maxFileSize = computed(() => {
-      const model = availableModels.value.find(m => m.id === currentModel.value)
-      if (!model) return 5 * 1024 * 1024 // 默认5MB
-      
-      // Omni模型的特殊限制
-      if (model.id === 'qwen-omni-turbo') {
-        // 针对Base64编码的限制 - API限制10MB的base64数据
-        const BASE64_SIZE_LIMIT = 7.5 * 1024 * 1024; // 约7.5MB原始文件转Base64后约10MB
-        const AUDIO_SIZE_LIMIT = 7.5 * 1024 * 1024; // 音频文件限制7.5MB，转Base64后约10MB
-        
-        // 根据当前类型判断大小
-        if (model.capabilities.includes('video')) {
-          return BASE64_SIZE_LIMIT; // 视频文件限制7.5MB
-        } else if (model.capabilities.includes('audio')) {
-          return AUDIO_SIZE_LIMIT; // 音频文件更严格限制为7.5MB
-        } else if (model.capabilities.includes('image')) {
-          return BASE64_SIZE_LIMIT; // 图片限制7.5MB
-        }
-      }
-      
-      return 5 * 1024 * 1024 // 默认5MB
-    })
+
     
     // 添加消息列表引用
     const messageListRef = ref(null)
@@ -413,7 +392,7 @@ export default {
         
         // 更新对话标题（如果是新对话）
         if (conversations.value.find(c => c.id === selectedConversationId.value)?.title === '新对话') {
-          updateConversationTitle(selectedConversationId.value, messageContent);
+          renameConversation({ id: selectedConversationId.value, title: messageContent });
         }
         
         // 始终使用通用completions API，无论对话ID是什么
@@ -641,22 +620,21 @@ export default {
       }
     };
     
-    // 更新对话标题
-    const updateConversationTitle = async (conversationId, messageContent) => {
+    // 更新对话标题 - 重命名为 renameConversation 并修改逻辑
+    const renameConversation = async ({ id, title }) => { // 接受对象参数
       try {
-        // 类型检查，确保conversationId是有效值
-        if (!conversationId) {
-          console.error('更新对话标题失败: conversationId为空');
+        // 类型检查
+        if (!id || !title) {
+          console.error('重命名对话失败: ID 或标题为空', { id, title });
           return;
         }
         
-        // 生成标题（使用消息的前30个字符）
-        const newTitle = messageContent.substring(0, 30) + (messageContent.length > 30 ? '...' : '');
-        
         // 更新内存中的对话标题
-        const conversation = conversations.value.find(c => c.id === conversationId);
+        const conversation = conversations.value.find(c => c.id === id);
         if (conversation) {
-          conversation.title = newTitle;
+          conversation.title = title; // 直接使用新标题
+          conversation.updated_at = new Date().toISOString(); // 更新修改时间
+          conversation.updatedAt = conversation.updated_at;  // 保持一致
           
           // 保存到本地数据库
           await saveConversationToDB({
@@ -664,7 +642,7 @@ export default {
             updatedAt: conversation.updated_at || new Date().toISOString()
           });
           
-          console.log('对话标题已更新并保存到本地数据库:', newTitle);
+          console.log('对话标题已更新并保存到本地数据库:', title);
         }
       } catch (error) {
         console.error('更新对话标题失败:', error);
@@ -672,7 +650,14 @@ export default {
     };
     
     // 处理文件上传
-    const handleFileUpload = async (file, userMessage = '') => {
+    const handleFileUpload = async ({ file, message: userMessage }) => { // 修改参数接收方式
+      // 增加空值检查
+      if (!file) {
+        console.error('handleFileUpload 接收到的文件为空');
+        ElMessage.error('文件上传失败：未找到文件数据');
+        return;
+      }
+      
       try {
         isConversationLoading.value = true
         
@@ -711,11 +696,6 @@ export default {
           return
         }
         
-        if (file.size > maxFileSize.value) {
-          ElMessage.error(`文件大小超过限制: ${(file.size / 1024 / 1024).toFixed(2)}MB > ${(maxFileSize.value / 1024 / 1024).toFixed(2)}MB`)
-          isConversationLoading.value = false
-          return
-        }
         
         // 记录日志
         console.log('准备上传文件:', file.name, '大小:', file.size, '类型:', file.type)
@@ -1380,7 +1360,7 @@ export default {
             } : {})
           },
           body: JSON.stringify(requestBody),
-        }, 120000) // Omni模型使用120秒超时
+        }, 120000); // Omni模型使用120秒超时
         
         // 处理响应和错误，与sendMessage方法中相同
         if (!response.ok) {
@@ -1759,7 +1739,9 @@ export default {
             // 添加媒体字段
             media_type: message.media_type || null, 
             media_base64: message.media_base64 || null,
-            media_url: message.media_url || null
+            media_url: message.media_url || null,
+            // 添加多文件信息字段
+            files_info: message.files_info || null 
           };
           
           // 如果 media_base64 过大，考虑不直接存储（可选优化）
@@ -1987,6 +1969,367 @@ export default {
       return mimeTypes[format] || `application/${format}`;
     };
 
+    // 新增：处理多图片发送 (使用Base64)
+    const handleSendMultiImages = async ({ files, message: userMessage }) => {
+      console.log(`[MultiImages] Received ${files.length} images to send with message: "${userMessage}"`);
+      if (!files || files.length === 0) return;
+      
+      // 再次验证数量和类型 (防御性编程)
+      if (files.length > 10) {
+        ElMessage.error('一次最多只能上传 10 张图片。');
+        return;
+      }
+      const allImages = files.every(f => 
+          ['.jpg', '.jpeg', '.png', '.gif'].includes('.' + f.name.split('.').pop().toLowerCase())
+      );
+      if (!allImages) {
+        ElMessage.error('多文件上传仅支持图片。');
+        return;
+      }
+      
+      isConversationLoading.value = true;
+      let tempUserMessageId = 'temp_multi_' + Date.now();
+      let base64DataUrls = [];
+      let fileInfos = files.map(f => ({ name: f.name, type: f.type, size: f.size })); // 用于临时消息显示
+      
+      // 添加临时用户消息 (只显示文本和文件信息)
+      conversationMessages.value.push({
+        id: tempUserMessageId,
+        role: 'user',
+        content: userMessage || ' ', // 确保有内容
+        media_type: 'image', // 标记为图片类型
+        files_info: fileInfos, // 存储文件信息用于显示
+        isLoading: true,
+        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        conversationId: selectedConversationId.value
+      });
+      
+      try {
+        // 1. 将所有图片文件转为 Base64 Data URL
+        const base64Promises = files.map(file => readFileAsBase64(file));
+        base64DataUrls = await Promise.all(base64Promises);
+        console.log(`[MultiImages] Successfully converted ${base64DataUrls.length} images to Base64.`);
+        
+        // 2. 准备发送给 AI API 的消息
+        //    需要构建一个包含文本和多个图片内容块的 message 对象
+        const userMessageForApi = {
+            role: 'user',
+            content: [] // content 是一个数组
+        };
+        
+        // 添加图片内容块
+        base64DataUrls.forEach(dataUrl => {
+            userMessageForApi.content.push({
+                type: 'image_url',
+                image_url: { url: dataUrl } // 直接使用 Data URL
+            });
+        });
+        
+        // 添加文本内容块
+        userMessageForApi.content.push({
+            type: 'text',
+            text: userMessage || ' ' // 确保有文本，即使是空字符串或空格
+        });
+        
+        // 3. 保存这个组合消息到数据库 (只保存文本和文件信息，不存Base64)
+        const finalUserMessage = {
+            id: uuidv4(),
+            role: 'user',
+            content: userMessage || ' ',
+            media_type: 'image_multi', // 使用特殊类型标记多图片
+            files_info: fileInfos, // 保存文件信息
+            created_at: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            conversationId: selectedConversationId.value
+        };
+        
+        // 替换临时消息
+        const tempIndex = conversationMessages.value.findIndex(m => m.id === tempUserMessageId);
+        if (tempIndex >= 0) {
+            conversationMessages.value[tempIndex] = finalUserMessage;
+            conversationMessages.value[tempIndex].isLoading = false; // 移除加载状态
+        }
+        await saveMessageToDB(finalUserMessage);
+        
+        // 更新对话更新时间
+        const conversation = conversations.value.find(c => c.id === selectedConversationId.value);
+        if (conversation) {
+          conversation.updated_at = new Date().toISOString();
+          conversation.updatedAt = new Date().toISOString();
+          await saveConversationToDB(conversation);
+        }
+        
+        // 4. 构建发送到 /api/chat/completions 的请求体
+        let recentMessages = conversationMessages.value
+            .filter(msg => msg.id !== finalUserMessage.id) // 排除刚保存的聚合消息
+            .slice(-9); // 取最近的9条历史消息 + 1条新消息 = 10条上下文
+            
+        // 添加系统提示 (如果需要)
+        if (!recentMessages.some(msg => msg.role === 'system')) {
+          recentMessages.unshift({
+            role: 'system',
+            content: '你是WordArt锦书AI助手，由通义千问大语言模型驱动。'
+          });
+        }
+        
+        // 将新的多模态消息添加到请求的消息列表末尾
+        recentMessages.push(userMessageForApi);
+        
+        
+        const mappedMessages = recentMessages.map(msg => {
+           // --- FIX: Add checks and filtering ---
+           if (!msg || typeof msg !== 'object') {
+               console.warn("[MultiImages] Skipping invalid item in recentMessages:", msg);
+               return null; // Return null for invalid items
+           }
+           // --- FIX END ---
+           
+           // 处理历史消息中的媒体 (如果之前保存了 Base64 或 URL)
+           if (msg.media_base64) {
+               let content = [];
+               // --- FIX START ---
+               let mediaFormat = 'unknown';
+               if (msg.media_type === 'image') {
+                   // 尝试从 files_info 获取 (新多图片或未来可能的单文件带info)
+                   if (msg.files_info && msg.files_info[0] && msg.files_info[0].name) {
+                       mediaFormat = msg.files_info[0].name.split('.').pop() || 'png';
+                   } else {
+                       // 回退：旧的单文件消息没有 files_info，根据类型默认
+                       mediaFormat = 'png'; 
+                       console.warn("历史消息(Base64)缺少files_info，图片格式默认设为png");
+                   }
+               } else if (msg.media_type === 'audio') {
+                   // 对于音频也添加类似的回退
+                   if (msg.files_info && msg.files_info[0] && msg.files_info[0].name) {
+                       mediaFormat = msg.files_info[0].name.split('.').pop() || 'mp3';
+                   } else {
+                       mediaFormat = 'mp3'; // 默认音频格式
+                       console.warn("历史消息(Base64)缺少files_info，音频格式默认设为mp3");
+                   }
+               } else if (msg.media_type === 'video') {
+                   // 对于视频的回退
+                   if (msg.files_info && msg.files_info[0] && msg.files_info[0].name) {
+                       mediaFormat = msg.files_info[0].name.split('.').pop() || 'mp4';
+                   } else {
+                       mediaFormat = 'mp4'; // 默认视频格式
+                       console.warn("历史消息(Base64)缺少files_info，视频格式默认设为mp4");
+                   }
+               }
+               // --- FIX END ---
+               
+               const mimeType = getMimeType(mediaFormat);
+               
+               // 根据修正后的 media_type 和 format 构造 content
+               if (msg.media_type === 'image') {
+                   content.push({
+                       type: "image_url",
+                       image_url: { url: `data:${mimeType};base64,${msg.media_base64.split(',')[1]}` }
+                   });
+               } else if (msg.media_type === 'audio') {
+                   content.push({
+                       type: "input_audio",
+                       input_audio: { 
+                           data: `data:${mimeType};base64,${msg.media_base64.split(',')[1]}`, 
+                           format: mediaFormat 
+                       }
+                   });
+               } else if (msg.media_type === 'video') {
+                   content.push({
+                       type: "video_url",
+                       video_url: { url: `data:${mimeType};base64,${msg.media_base64.split(',')[1]}` }
+                   });
+               }
+               
+               // 添加文本部分
+               content.push({ type: "text", text: msg.content || ' ' }); // 确保有text部分
+               return { role: msg.role, content: content };
+           } 
+           // 处理新添加的多模态消息（已经是正确格式）
+           else if (msg.role === 'user' && Array.isArray(msg.content)) {
+               return msg;
+           } 
+           // 其他普通文本消息
+           else if (msg.role && msg.content !== undefined && msg.content !== null && typeof msg.content === 'string') { // 确保是字符串
+               return { role: msg.role, content: msg.content };
+           } else {
+               console.warn("[MultiImages] Skipping message with unexpected format or missing role/content:", msg);
+               return null; // Return null for invalid format
+           }
+        }); // <-- map 结束
+        
+        // --- 移除调试日志 ---
+        // try {
+        //     console.log("[MultiImages] mappedMessages after map (before filter):", JSON.parse(JSON.stringify(mappedMessages)));
+        // } catch (logError) {
+        //      console.error("Error logging mappedMessages:", logError, mappedMessages);
+        // }
+
+        const finalMessages = mappedMessages.filter(Boolean); // <-- filter 执行
+
+        // --- 移除调试日志 ---
+        // try {
+        //     console.log("[MultiImages] finalMessages after filter:", JSON.parse(JSON.stringify(finalMessages)));
+        // } catch (logError) {
+        //      console.error("Error logging finalMessages:", logError, finalMessages);
+        // }
+
+        const requestBody = {
+          model: currentModel.value,
+          messages: finalMessages, 
+          // modalities: ["text"], // 移除
+          stream: true,
+          stream_options: { include_usage: true }
+        };
+
+        // --- 移除调试日志 ---
+        // try {
+        //     console.log('[MultiImages] Sending request body:', JSON.stringify(requestBody, null, 2));
+        // } catch (e) {
+        //     console.error('Error stringifying request body for logging:', e);
+        //     console.log('[MultiImages] Sending request body (raw):', requestBody);
+        // }
+        // --- 日志结束 ---
+
+        // 5. 发送请求并处理响应 (与 sendMultiModalMessageWithBase64 类似)
+        const url = `/api/chat/completions`;
+        const response = await fetchWithTimeout(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(isLoggedIn.value ? {
+              'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+            } : {})
+          },
+          body: JSON.stringify(requestBody),
+        }, 120000); // 使用较长超时
+
+        if (!response.ok) {
+          console.error('API请求失败 (多图片):', response.status, response.statusText);
+          const errorText = await response.text();
+          throw new Error(`多图片消息请求失败: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        // 处理流式响应 (与 sendMultiModalMessageWithBase64 基本相同)
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let aiResponse = '';
+        let aiMessageId = '';
+        let assistantMessageAdded = false;
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n').filter(line => line.trim() !== '');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.substring(6);
+                if (data === '[DONE]') continue;
+                
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.error) {
+                    throw new Error(parsed.message || 'AI生成回复失败 (多图片)');
+                  }
+                  
+                  if (!aiMessageId && parsed.id) {
+                    aiMessageId = parsed.id;
+                  }
+                  
+                  if (parsed.choices && parsed.choices[0]) {
+                    const delta = parsed.choices[0].delta;
+                    if (delta && delta.content) {
+                      aiResponse += delta.content;
+                      
+                      const existingMsgIndex = conversationMessages.value.findIndex(m => m.id === aiMessageId);
+                      if (existingMsgIndex >= 0) {
+                        conversationMessages.value[existingMsgIndex].content = aiResponse;
+                      } else if (!assistantMessageAdded) {
+                          const newAssistantMessage = {
+                              id: aiMessageId || 'ai_multi_' + Date.now(),
+                              role: 'assistant',
+                              content: aiResponse,
+                              created_at: new Date().toISOString(),
+                              createdAt: new Date().toISOString(),
+                              conversationId: selectedConversationId.value
+                          };
+                          conversationMessages.value.push(newAssistantMessage);
+                          assistantMessageAdded = true; // 标记已添加
+                      }
+                    }
+                  }
+                } catch (err) {
+                  console.error('解析流数据错误 (多图片):', err, data);
+                  // 不轻易抛出错误，让流程继续
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('读取流响应错误 (多图片):', error);
+          // 如果出错时还没有AI响应，则抛出
+          if (!aiResponse) throw error; 
+        } finally {
+          if (aiResponse && aiMessageId) {
+            const finalAiMessage = {
+              id: aiMessageId,
+              role: 'assistant',
+              content: aiResponse,
+              created_at: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              conversationId: selectedConversationId.value
+            };
+            // 确保最终消息被保存
+            const existingMsgIndex = conversationMessages.value.findIndex(m => m.id === finalAiMessage.id);
+            if (existingMsgIndex >= 0) {
+              conversationMessages.value[existingMsgIndex] = finalAiMessage;
+              await saveMessageToDB(finalAiMessage);
+            } else if (!assistantMessageAdded) {
+                // 如果流结束时还没添加过助手消息 (例如非流式或只有DONE)
+                conversationMessages.value.push(finalAiMessage);
+                await saveMessageToDB(finalAiMessage);
+            } else {
+                 // 如果助手消息已添加，确保最终内容被保存
+                 const idx = conversationMessages.value.findIndex(m => m.id === aiMessageId);
+                 if(idx >=0 ) await saveMessageToDB(conversationMessages.value[idx]);
+            }
+            
+            // 更新对话时间
+             const conv = conversations.value.find(c => c.id === selectedConversationId.value);
+             if (conv) {
+               conv.updated_at = new Date().toISOString();
+               conv.updatedAt = new Date().toISOString();
+               await saveConversationToDB(conv);
+             }
+          }
+        }
+
+      } catch (error) {
+        console.error('处理多图片消息失败:', error);
+        // 移除临时用户消息
+        const tempIndex = conversationMessages.value.findIndex(m => m.id === tempUserMessageId);
+        if (tempIndex >= 0) {
+          conversationMessages.value.splice(tempIndex, 1);
+        }
+        // 显示错误消息
+        conversationMessages.value.push({
+          id: 'error_multi_' + Date.now(),
+          role: 'system',
+          content: `发送多图片消息失败: ${error.message}`,
+          created_at: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          conversationId: selectedConversationId.value,
+          error: true
+        });
+      } finally {
+        isConversationLoading.value = false;
+      }
+    };
+
     return {
       // 用户相关状态
       isLoggedIn,
@@ -2005,7 +2348,6 @@ export default {
       availableModels,
       currentModel,
       supportedFileTypes,
-      maxFileSize,
       
       // 方法
       showUserDialog,
@@ -2021,8 +2363,9 @@ export default {
       currentModelName,
       currentModelType,
       deleteConversation,
-      updateConversationTitle,
-      handleMultiFileUpload
+      renameConversation,
+      handleMultiFileUpload,
+      handleSendMultiImages
     }
   }
 }

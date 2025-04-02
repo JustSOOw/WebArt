@@ -96,6 +96,19 @@
                   </div>
                 </div>
                 
+                <!-- 新增：处理多图片消息 -->
+                <div v-else-if="message.media_type === 'image_multi' && message.files_info" class="multi-image-info">
+                  <div class="multi-image-header">发送了 {{ message.files_info.length }} 张图片:</div>
+                  <ul class="file-list">
+                    <li v-for="(file, index) in message.files_info" :key="index">
+                      <el-icon><Picture /></el-icon>
+                      <span>{{ file.name }}</span> 
+                      <span class="file-size">({{ (file.size / 1024).toFixed(1) }} KB)</span>
+                    </li>
+                  </ul>
+                  <!-- 注意：这里不显示图片预览，因为Base64未存储 -->
+                </div>
+                
                 <!-- 渲染文本内容 (如果存在或为占位符) -->
                 <div v-if="message.content && message.content.trim() !== ''" class="text-content" v-html="formatContent(message.content)"></div>
                 
@@ -149,7 +162,7 @@
 
 <script>
 import { ref, onMounted, nextTick, watch } from 'vue'
-import { User, ChatSquare, Warning, ChatDotRound, CopyDocument, Document } from '@element-plus/icons-vue'
+import { User, ChatSquare, Warning, ChatDotRound, CopyDocument, Document, Picture } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
@@ -164,7 +177,8 @@ export default {
     Warning,
     ChatDotRound,
     CopyDocument,
-    Document
+    Document,
+    Picture
   },
   props: {
     messages: {
@@ -268,17 +282,48 @@ export default {
     }
     
     // 滚动到底部
-    const scrollToBottom = async () => {
-      await nextTick()
-      if (scrollbarRef.value?.wrap) {
-        scrollbarRef.value.wrap.scrollTop = scrollbarRef.value.wrap.scrollHeight
-      }
+    const scrollToBottom = () => {
+      // 使用 setTimeout 给予浏览器更多渲染时间 (或让 el-scrollbar 内部准备好)
+      setTimeout(() => {
+        // 尝试使用 el-scrollbar 的 scrollTo 方法
+        if (scrollbarRef.value && typeof scrollbarRef.value.scrollTo === 'function') {
+            // 仍然需要 wrap 来获取 scrollHeight
+            // 根据 Element Plus 版本，可能是 wrapRef 或 wrap
+            const scrollContainer = scrollbarRef.value.wrapRef || scrollbarRef.value.wrap;
+            
+            if (scrollContainer) {
+                const scrollHeight = scrollContainer.scrollHeight;
+                const clientHeight = scrollContainer.clientHeight;
+                  
+                if (scrollHeight > clientHeight) {
+                    scrollbarRef.value.scrollTo({ top: scrollHeight, behavior: 'auto' }); // 使用 auto 避免平滑滚动可能带来的问题
+                    
+                    // 短暂延迟后检查 scrollTop 是否接近 scrollHeight
+                    setTimeout(() => {
+                        if (scrollContainer) { // 再次检查，以防万一
+                           const currentScrollTop = scrollContainer.scrollTop;
+                        } else {
+                           // console.warn('[MessageList Debug] scrollContainer became unavailable in inner setTimeout.'); // 保留注释以备将来调试
+                        }
+                    }, 50); // 稍长延迟检查
+                } else {
+                }
+            } else {
+                console.warn('[MessageList] Scroll container (wrap or wrapRef) not found on scrollbarRef.'); // 保留这个警告，因为它可能表示配置问题
+            }
+            
+        } else {
+          console.warn('[MessageList] scrollbarRef.value missing or scrollTo method not available.'); // 保留这个警告
+        }
+      }, 50); // 调回延迟到 50ms，因为组件方法可能更可靠
     }
     
     // 监听消息列表变化，自动滚动到底部
-    watch(() => props.messages, () => {
+    watch(() => props.messages, (newMessages, oldMessages) => {
+      // 可以在这里也稍微延迟，避免过于频繁的滚动尝试
+      // 但通常在 scrollToBottom 内部延迟就够了
       scrollToBottom()
-    }, { deep: true })
+    }, { deep: true, flush: 'post' }) // 使用 flush: 'post' 确保在组件更新后触发 watch
     
     // 初始化时滚动到底部
     onMounted(() => {
@@ -558,5 +603,103 @@ export default {
   .message-container {
     padding: 12px;
   }
+}
+
+.media-preview,
+.multi-image-info { /* 应用到新的多图片信息块 */
+  margin-bottom: 8px;
+}
+
+.preview-image {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.audio-preview audio,
+.video-preview video {
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+.document-link a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--el-color-primary);
+  text-decoration: none;
+}
+
+.document-link a:hover {
+  text-decoration: underline;
+}
+
+/* 新增：多图片信息样式 */
+.multi-image-info {
+  background-color: #f7f7f7;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.multi-image-header {
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #606266;
+}
+
+.file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.file-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: #909399;
+}
+
+.file-list .el-icon {
+  font-size: 16px;
+}
+
+.file-size {
+  margin-left: 4px;
+  font-size: 12px;
+}
+
+.text-content {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.text-content :deep(p) {
+  margin: 0 0 8px 0;
+}
+
+.text-content :deep(pre) {
+  background-color: #f5f7fa;
+  padding: 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.text-content :deep(code) {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9em;
+}
+
+.message-actions {
+  margin-top: 8px;
+  opacity: 0.7;
+  transition: opacity 0.3s;
+}
+
+.message-item:hover .message-actions {
+  opacity: 1;
 }
 </style>

@@ -549,10 +549,20 @@ def stream_message(conversation_id):
                 # 根据模型类型和请求内容调用不同的API方法
                 if model == "qwen-omni-turbo" or is_multimodal_request:
                     # 多模态模型或多模态请求
-                    stream_response = ai_service.multimodal_completion(
-                        formatted_messages,
-                        model=model
-                    )
+                    try:
+                        current_app.logger.info(f"开始Omni模型流式生成")
+                        stream_response = ai_service.multimodal_completion(
+                            formatted_messages,
+                            model=model
+                        )
+                    except Exception as e:
+                        current_app.logger.error(f"Omni模型流式生成失败: {str(e)}")
+                        error_msg = json.dumps({
+                            "error": True,
+                            "message": f"Omni模型生成失败: {str(e)}"
+                        })
+                        yield f"data: {error_msg}\n\n"
+                        return
                 else:
                     # 文本模型
                     stream_response = ai_service.stream_text_completion(
@@ -657,7 +667,16 @@ def api_completions():
             }), 400
         
         # 记录API调用日志
-        current_app.logger.info(f"API调用: 模型={model}, 消息数量={len(messages)}")
+        current_app.logger.info(f"API调用: 模型={model}, 消息数量={len(messages) if messages is not None else '未知(None)'}")
+        
+        # --- FIX: 增加对 messages 是否为列表的检查 ---
+        if not isinstance(messages, list):
+            current_app.logger.error(f"请求中的 'messages' 字段不是列表，而是: {type(messages)}")
+            return jsonify({
+                "error": True,
+                "message": "请求中的 'messages' 必须是一个列表"
+            }), 400
+        # --- FIX END ---
         
         # 控制是否使用流式返回
         use_stream = data.get('stream', False)
@@ -667,24 +686,22 @@ def api_completions():
         
         # 对于多模态模型，特殊处理消息格式
         if is_multimodal:
-            # 检查消息格式是否正确
+            # 检查消息格式是否正确 (检查 role 和 msg 类型)
             for msg in messages:
+                # --- FIX: 确保 msg 是字典 --- 
+                if not isinstance(msg, dict):
+                    current_app.logger.error(f"消息列表中的项目不是字典: {type(msg)}, 内容: {msg}")
+                    return jsonify({"error": True, "message": "消息列表包含无效项"}), 400
+                # --- FIX END ---
+                
                 if 'role' not in msg or not msg['role']:
                     return jsonify({
                         "error": True,
                         "message": "消息缺少role字段"
                     }), 400
-                
-                # 检查内容格式
-                if 'content' not in msg:
-                    return jsonify({
-                        "error": True,
-                        "message": "消息缺少content字段"
-                    }), 400
             
-            # 简化请求格式，删除复杂结构
+            # 调用多模态服务
             try:
-                # 使用标准格式调用
                 @stream_with_context
                 def generate():
                     try:
@@ -735,52 +752,56 @@ def api_completions():
                     "message": f"Omni模型处理失败: {str(e)}"
                 }), 500
         
-        # 对于普通文本模型，进行标准处理
-        # 检查消息格式
-        for msg in messages:
-            if 'role' not in msg or 'content' not in msg:
-                return jsonify({
-                    "error": True,
-                    "message": "消息格式错误，需要包含role和content字段"
-                }), 400
+        # --- FIX: 添加 else 条件，确保文本模型处理只在非多模态时执行 ---
+        else:
+            # 对于普通文本模型，进行标准处理
+            # 检查消息格式
+            for msg in messages:
+                if 'role' not in msg or 'content' not in msg:
+                    return jsonify({
+                        "error": True,
+                        "message": "消息格式错误，需要包含role和content字段"
+                    }), 400
+                
+                # 确保content是字符串
+                if not isinstance(msg['content'], str):
+                    # 这里之前会错误地转换数组，现在因为在 else 分支，不会影响多模态
+                    current_app.logger.warning(f"消息内容不是字符串，强制转换为字符串: {type(msg['content'])}")
+                    msg['content'] = str(msg['content'])
             
-            # 确保content是字符串
-            if not isinstance(msg['content'], str):
-                msg['content'] = str(msg['content'])
-        
-        # 根据请求选择流式或非流式响应
-        if use_stream:
-            # 流式返回
-            def generate():
-                for chunk in ai_service.stream_text_completion(
+            # 根据请求选择流式或非流式响应
+            if use_stream:
+                # 流式返回
+                def generate():
+                    for chunk in ai_service.stream_text_completion(
+                        messages=messages,
+                        model=model,
+                        temperature=data.get('temperature', 0.7),
+                        max_tokens=data.get('max_tokens')
+                    ):
+                        if 'error' in chunk:
+                            yield f"data: {json.dumps(chunk)}\n\n"
+                            break
+                        
+                        yield f"data: {json.dumps(chunk)}\n\n"
+                    
+                    yield "data: [DONE]\n\n"
+                
+                return Response(
+                    stream_with_context(generate()),
+                    mimetype='text/event-stream'
+                )
+            else:
+                # 非流式返回
+                response = ai_service.text_completion(
                     messages=messages,
                     model=model,
+                    stream=False,
                     temperature=data.get('temperature', 0.7),
                     max_tokens=data.get('max_tokens')
-                ):
-                    if 'error' in chunk:
-                        yield f"data: {json.dumps(chunk)}\n\n"
-                        break
-                    
-                    yield f"data: {json.dumps(chunk)}\n\n"
+                )
                 
-                yield "data: [DONE]\n\n"
-            
-            return Response(
-                stream_with_context(generate()),
-                mimetype='text/event-stream'
-            )
-        else:
-            # 非流式返回
-            response = ai_service.text_completion(
-                messages=messages,
-                model=model,
-                stream=False,
-                temperature=data.get('temperature', 0.7),
-                max_tokens=data.get('max_tokens')
-            )
-            
-            return jsonify(response)
+                return jsonify(response)
             
     except Exception as e:
         current_app.logger.error(f"处理API请求失败: {str(e)}")
