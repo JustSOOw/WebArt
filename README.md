@@ -103,6 +103,18 @@ WebArt/
 - 前端: http://localhost
 - 后端API: http://localhost/api
 
+### 使用VS Code Dev Containers开发
+
+项目支持使用VS Code Dev Containers进行开发，提供隔离且一致的开发环境：
+
+1. 安装[VS Code](https://code.visualstudio.com/)和[Dev Containers扩展](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+2. 在VS Code中打开项目根目录
+3. 点击左下角绿色图标，选择"Reopen in Container"
+4. 等待容器构建完成，VS Code将在容器内打开项目
+5. 所有必要的扩展和工具已预先配置好
+
+详细说明请参考`.devcontainer/README.md`文件。
+
 ### Docker资源优化
 
 为避免Docker占用过多磁盘空间，项目包含以下优化:

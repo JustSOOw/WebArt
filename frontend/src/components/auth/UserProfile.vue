@@ -14,7 +14,7 @@
             <el-icon><User /></el-icon>
             <span>个人资料</span>
           </el-dropdown-item>
-          <el-dropdown-item command="history">
+          <el-dropdown-item command="history" v-if="showImageHistoryOption">
             <el-icon><Picture /></el-icon>
             <span>我的图片</span>
           </el-dropdown-item>
@@ -64,6 +64,10 @@ export default {
     user: {
       type: Object,
       required: true
+    },
+    showImageHistoryOption: {
+      type: Boolean,
+      default: true // 默认显示，兼容 webart 模块
     }
   },
   emits: ['logout', 'show-history'],

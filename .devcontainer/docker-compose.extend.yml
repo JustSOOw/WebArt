@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  # 增强backend服务以适配Dev Containers
+  backend:
+    image: python:3.11-slim-bullseye
+    volumes:
+      # 使用相对路径挂载WebArt项目目录
+      - ./:/workspace:cached
+    environment:
+      - PYTHONPATH=/workspace/backend
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - DATABASE_URI=sqlite:////workspace/backend/data/wordart.db
+    # 只保留sleep infinity让容器持续运行
+    command: sleep infinity
+    
+  # 确保前端开发服务也能正常工作
+  frontend-dev:
+    volumes:
+      # 使用相对路径挂载WebArt项目目录
+      - ./:/workspace:cached
+      - /workspace/frontend/node_modules 

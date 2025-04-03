@@ -11,6 +11,7 @@
           <user-profile 
             v-if="isLoggedIn" 
             :user="currentUser" 
+            :show-image-history-option="false" 
             @logout="handleLogout"
           />
           <el-button v-else link type="primary" @click="showUserDialog">
@@ -2158,21 +2159,11 @@ export default {
            }
         }); // <-- map 结束
         
-        // --- 移除调试日志 ---
-        // try {
-        //     console.log("[MultiImages] mappedMessages after map (before filter):", JSON.parse(JSON.stringify(mappedMessages)));
-        // } catch (logError) {
-        //      console.error("Error logging mappedMessages:", logError, mappedMessages);
-        // }
+
 
         const finalMessages = mappedMessages.filter(Boolean); // <-- filter 执行
 
-        // --- 移除调试日志 ---
-        // try {
-        //     console.log("[MultiImages] finalMessages after filter:", JSON.parse(JSON.stringify(finalMessages)));
-        // } catch (logError) {
-        //      console.error("Error logging finalMessages:", logError, finalMessages);
-        // }
+
 
         const requestBody = {
           model: currentModel.value,
@@ -2182,14 +2173,6 @@ export default {
           stream_options: { include_usage: true }
         };
 
-        // --- 移除调试日志 ---
-        // try {
-        //     console.log('[MultiImages] Sending request body:', JSON.stringify(requestBody, null, 2));
-        // } catch (e) {
-        //     console.error('Error stringifying request body for logging:', e);
-        //     console.log('[MultiImages] Sending request body (raw):', requestBody);
-        // }
-        // --- 日志结束 ---
 
         // 5. 发送请求并处理响应 (与 sendMultiModalMessageWithBase64 类似)
         const url = `/api/chat/completions`;
