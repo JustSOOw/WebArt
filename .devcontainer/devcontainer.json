@@ -38,6 +38,6 @@
         5000,
         3000
     ],
-    "postCreateCommand": "apt-get update && apt-get install -y --no-install-recommends git curl procps tmux nodejs npm && pip install -r /workspace/backend/requirements.txt && apt-get clean && rm -rf /var/lib/apt/lists/* && chmod +x /workspace/.devcontainer/start-app.sh",
+    "postCreateCommand": "apt-get update && apt-get install -y --no-install-recommends git openssh-client curl procps tmux nodejs npm && pip install -r /workspace/backend/requirements.txt && apt-get clean && rm -rf /var/lib/apt/lists/* && chmod +x /workspace/.devcontainer/start-app.sh",
     "postStartCommand": "echo '开发环境已启动，请在终端运行 bash /workspace/.devcontainer/start-app.sh 启动所有服务!'"
 } 
