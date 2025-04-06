@@ -23,14 +23,14 @@ const routes = [
     }
   },
   // 未来的路由会添加在这里
-  // {
-  //   path: '/video',
-  //   name: 'Video',
-  //   component: () => import('../views/VideoView.vue'),
-  //   meta: {
-  //     title: 'AI视频生成'
-  //   }
-  // }
+  {
+    path: '/video',
+    name: 'Video',
+    component: () => import('../views/VideoView.vue'),
+    meta: {
+      title: 'AI视频生成'
+    }
+  }
 ]
 
 const router = createRouter({

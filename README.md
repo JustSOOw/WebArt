@@ -115,20 +115,6 @@ WebArt/
 
 详细说明请参考`.devcontainer/README.md`文件。
 
-### Docker资源优化
-
-为避免Docker占用过多磁盘空间，项目包含以下优化:
-
-1. 使用`.dockerignore`文件排除不必要的构建上下文文件
-2. 使用`tmpfs`卷挂载减少非永久数据的磁盘写入
-3. 优化Dockerfile减少构建层数和缓存大小
-4. 提供资源清理脚本`cleanup.ps1`用于定期清理
-
-当Docker磁盘空间占用过大时，可使用以下命令清理:
-
-```
-./cleanup.ps1
-```
 
 ## API文档
 

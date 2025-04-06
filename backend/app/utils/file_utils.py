@@ -2,7 +2,7 @@ r'''
  * @Author: JustSOOw wang813104@outlook.com
  * @Date: 2025-03-10 11:37:34
  * @LastEditors: AI Assistant
- * @LastEditTime: 2025-03-22 12:20:00
+ * @LastEditTime: 2025-04-03 15:00:00
  * @FilePath: \WebArt\backend\app\utils\file_utils.py
  * @Description: 文件处理工具函数
  * @
@@ -15,12 +15,13 @@ import io
 from flask import current_app
 from werkzeug.utils import secure_filename
 from PIL import Image as PILImage   # type: ignore
+import piexif
 
 def allowed_image_file(filename):
     """
     检查文件是否为允许的图片类型
     """
-    allowed_extensions = {'png', 'jpg', 'jpeg', 'bmp', 'gif'}
+    allowed_extensions = {'png', 'jpg', 'jpeg', 'bmp', 'gif', 'webp'}
     # 检查文件名是否包含点而且判断以点分割后的后缀是否在allowed_extensions中
     #rsplit('.', 1)[1].lower()以点分割，1表示只分割一次，[1]表示分割后第二个元素，lower()表示转换为小写
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
@@ -36,14 +37,14 @@ def allowed_audio_file(filename):
     """
     检查文件是否为允许的音频类型
     """
-    allowed_extensions = {'mp3', 'wav', 'm4a', 'ogg'}
+    allowed_extensions = {'mp3', 'wav', 'ogg', 'flac'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
 def allowed_video_file(filename):
     """
     检查文件是否为允许的视频类型
     """
-    allowed_extensions = {'mp4', 'webm', 'mov'}
+    allowed_extensions = {'mp4', 'avi', 'mkv', 'mov', 'webm'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
 def save_uploaded_file(file, subfolder):
@@ -79,19 +80,11 @@ def clean_exif(file_path):
         bool: 是否成功清除EXIF数据
     """
     try:
-        # 打开图片
-        img = PILImage.open(file_path)
-        
-        # 创建一个新的空白图片，与原图大小和模式相同
-        data = list(img.getdata())
-        image_without_exif = PILImage.new(img.mode, img.size)
-        image_without_exif.putdata(data)
-        
-        # 保存没有EXIF的图片
-        image_without_exif.save(file_path)
+        if file_path.lower().endswith(('.jpg', '.jpeg')):
+            piexif.remove(file_path)
         return True
     except Exception as e:
-        current_app.logger.error(f"清除EXIF数据失败: {str(e)}")
+        current_app.logger.error(f"清理EXIF信息失败: {file_path}, 错误: {str(e)}")
         return False
 
 def validate_image(file_path):
@@ -181,3 +174,23 @@ def download_remote_image(url, subfolder='images'):
         
     except Exception as e:
         return None, f"下载图片失败: {str(e)}"
+
+def download_remote_file(url, save_path):
+    """下载远程文件并保存到本地"""
+    try:
+        response = requests.get(url, stream=True, timeout=30)
+        response.raise_for_status()
+        
+        # 确保目录存在
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        
+        # 保存文件
+        with open(save_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+        
+        return True
+    except Exception as e:
+        current_app.logger.error(f"下载远程文件失败: {url}, 错误: {str(e)}")
+        return False

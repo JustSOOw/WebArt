@@ -24,12 +24,10 @@
           <span>AI对话</span>
         </el-menu-item>
         <!-- 未来其他功能的导航项将添加在这里 -->
-        <!--
         <el-menu-item index="/video" route="/video">
           <el-icon><VideoPlay /></el-icon>
           <span>视频生成</span>
         </el-menu-item>
-        -->
       </el-menu>
     </el-drawer>
     
@@ -48,14 +46,15 @@
 <script>
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Picture, Menu, ChatDotRound } from '@element-plus/icons-vue'
+import { Picture, Menu, ChatDotRound, VideoPlay } from '@element-plus/icons-vue'
 
 export default {
   name: 'AppNavigation',
   components: {
     Picture,
     Menu,
-    ChatDotRound
+    ChatDotRound,
+    VideoPlay
   },
   emits: ['navigation-toggle'],
   setup(props, { emit }) {

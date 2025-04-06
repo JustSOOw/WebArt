@@ -25,7 +25,7 @@
 1. 打开终端（`Ctrl+``或菜单栏的"终端 > 新建终端"）
 2. 运行启动脚本：
 ```bash
-bash /workspace/start-services.sh
+bash /workspace/.devcontainer/start-app.sh
 ```
 3. 脚本会自动启动后端和前端服务
 4. 在浏览器中访问：

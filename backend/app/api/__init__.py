@@ -2,7 +2,7 @@
 Author: JustSOOw wang813104@outlook.com
 Date: 2025-03-10 13:45:37
 LastEditors: AI Assistant
-LastEditTime: 2025-03-22 12:10:00
+LastEditTime: 2025-04-03 15:15:00
 FilePath: /WebArt/backend/app/api/__init__.py
 Description: API路由注册
 
@@ -16,3 +16,4 @@ from app.api.auth import auth_bp
 from app.api.uploads import uploads_bp
 from app.api.chat import chat_bp
 from app.api.images import images_bp
+from app.api.video import video_bp

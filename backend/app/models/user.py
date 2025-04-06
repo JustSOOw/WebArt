@@ -26,6 +26,7 @@ class User(UserMixin, db.Model):
     
     # 关系
     images = db.relationship('Image', backref='user', lazy='dynamic')
+    videos = db.relationship('Video', backref='user', lazy='dynamic')
     
     def __init__(self, username, email, password):
         self.username = username

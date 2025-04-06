@@ -263,7 +263,7 @@ export default {
     
     // 处理滚动
     const handleScroll = (e) => {
-      const { scrollTop } = e.target
+      const { scrollTop } = e
       
       // 如果滚动到顶部，触发加载更多
       if (scrollTop === 0 && props.hasMore && !props.loading) {

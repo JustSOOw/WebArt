@@ -1,0 +1,415 @@
+模型简介
+
+
+wanx2.1-i2v-turbo
+
+生成速度更快，耗时仅为plus模型的三分之一，性价比更高。
+
+wanx2.1-i2v-plus
+
+生成细节更丰富，画面更具质感。
+
+
+HTTP调用
+图生视频模型处理时间较长，为了避免请求超时，HTTP调用仅支持异步获取模型结果。您需要发起两个请求：
+
+创建任务：首先发送一个请求创建任务，该请求会返回任务ID。
+
+根据任务ID查询结果：使用上一步获得的任务ID，查询模型生成的结果。
+
+图生视频耗时较长，turbo模型大约需要3-5分钟，plus模型则需7-10分钟。实际耗时取决于排队任务数量和网络状况，请您在获取结果时耐心等待。
+创建任务
+POST https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis
+
+请求参数
+图生视频
+ 
+curl --location 'https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis' \
+    -H 'X-DashScope-Async: enable' \
+    -H "Authorization: Bearer $DASHSCOPE_API_KEY" \
+    -H 'Content-Type: application/json' \
+    -d '{
+    "model": "wanx2.1-i2v-turbo",
+    "input": {
+        "prompt": "一只猫在草地上奔跑",
+        "img_url": "https://cdn.translate.alibaba.com/r/wanx-demo-1.png"
+        
+    },
+    "parameters": {
+        "resolution": "720P",
+        "prompt_extend": true
+    }
+}'
+请求头（Headers）
+Content-Type string （必选）
+
+请求内容类型。此参数必须设置为application/json。
+
+Authorization string（必选）
+
+请求身份认证。接口使用百炼API-Key进行身份认证。示例值：Bearer d1xxx2a。
+
+X-DashScope-Async string （必选）
+
+异步处理配置参数。HTTP请求只支持异步，必须设置为enable。
+
+请求体（Request Body）
+model string （必选）
+
+模型名称。示例值：wanx2.1-i2v-turbo。
+
+input object （必选）
+
+输入的基本信息，如提示词等。
+
+属性
+
+prompt string （必选）
+
+文本提示词。支持中英文，长度不超过800个字符，每个汉字/字母占一个字符，超过部分会自动截断。
+
+示例值：一只小猫在草地上奔跑。
+
+提示词的使用技巧请参见文生视频/图生视频Prompt指南。
+
+img_url string （必选）
+
+生成视频时所使用的第一帧图像的URL。
+
+图像限制：
+
+图像格式：JPEG、JPG、PNG（不支持透明通道）、BMP、WEBP。
+
+文件大小：不超过10 MB。
+
+分辨率：360≤图像边长≤2000，单位像素。
+
+parameters object （可选）
+
+视频处理参数。
+
+属性
+
+resolution string （可选）
+
+生成视频的分辨率档位。目前支持2个档位：480P、720P，默认值为720P。
+
+模型支持的视频分辨率档位如下：
+
+wanx2.1-i2v-turbo：480P、720P。
+
+wanx2.1-i2v-plus：720P。
+
+模型会保持输出视频与输入图像的宽高比一致。在宽高比不变的基础上，您可以使用resolution参数将输出视频的分辨率调整到指定档位的总像素附近。
+
+480P：视频分辨率通常指 640×480（约 31万像素），视频宽高比为4:3。
+
+720P ：视频分辨率通常指 1280×720（约 92万像素），视频宽高比为16:9。
+
+示例：若输入图像的宽高比例为 4:5，且选择 480P 档位，则输出视频的宽高比会保持4:5，分辨率会调整为接近 31万像素。例如，输出视频的分辨率为 480×600，总像素 28.8万（此数据仅做参考，以实际输出为准）。
+duration integer （可选）
+
+生成视频的时长，默认值为5，单位为秒。
+
+wanx2.1-i2v-turbo：可选值为3、4或5。
+
+wanx2.1-i2v-plus：目前仅支持5秒固定时长生成。
+
+prompt_extend bool （可选）
+
+是否开启prompt智能改写。开启后使用大模型对输入prompt进行智能改写。对于较短的prompt生成效果提升明显，但会增加耗时。
+
+true：默认值，开启智能改写。
+
+false：不开启智能改写。
+
+seed integer （可选）
+
+随机数种子，用于控制模型生成内容的随机性。取值范围为[0, 2147483647]。
+
+如果不提供，则算法自动生成一个随机数作为种子。如果希望生成内容保持相对稳定，可以使用相同的seed参数值。
+
+响应参数
+成功响应
+ 
+{
+    "output": {
+        "task_status": "PENDING",
+        "task_id": "0385dc79-5ff8-4d82-bcb6-xxxxxx"
+    },
+    "request_id": "4909100c-7b5a-9f92-bfe5-xxxxxx"
+}
+output object
+
+任务输出信息。
+
+属性
+
+task_id string
+
+任务ID。
+
+task_status string
+
+任务状态。
+
+枚举值
+
+PENDING：任务排队中
+
+RUNNING：任务处理中
+
+SUSPENDED：任务挂起
+
+SUCCEEDED：任务执行成功
+
+FAILED：任务执行失败
+
+UNKNOWN：任务不存在或状态未知
+
+request_id string
+
+请求唯一标识。可用于请求明细溯源和问题排查。
+
+code string
+
+请求失败的错误码。请求成功时不会返回此参数，详情请参见错误信息。
+
+message string
+
+请求失败的详细信息。请求成功时不会返回此参数，详情请参见错误信息。
+
+根据任务ID查询结果
+GET https://dashscope.aliyuncs.com/api/v1/tasks/{task_id}
+
+请求参数
+查询任务结果
+您需要将86ecf553-d340-4e21-xxxxxxxxx替换为真实的task_id。
+
+ 
+curl -X GET \
+--header "Authorization: Bearer $DASHSCOPE_API_KEY" \
+https://dashscope.aliyuncs.com/api/v1/tasks/86ecf553-d340-4e21-xxxxxxxxx
+请求头（Headers）
+Authorization string（必选）
+
+请求身份认证。接口使用百炼API-Key进行身份认证。示例值：Bearer d1xxx2a。
+
+URL路径参数（Path parameters）
+task_id string（必选）
+
+任务ID。
+
+响应参数
+任务执行成功
+任务数据（如任务状态、视频URL等）仅保留24小时，超时后会被自动清除。请您务必及时保存生成的视频。
+
+ 
+{
+    "request_id": "ec016349-6b14-9ad6-8009-xxxxxx",
+    "output": {
+        "task_id": "3f21a745-9f4b-4588-b643-xxxxxx",
+        "task_status": "SUCCEEDED",
+        "submit_time": "2025-01-16 14:43:28.785",
+        "scheduled_time": "2025-01-16 14:43:28.805",
+        "end_time": "2025-01-16 14:47:51.259",
+        "video_url": "https://dashscope-result-wlcb.oss-cn-wulanchabu.aliyuncs.com/aa.mp4"
+    },
+    "usage": {
+        "video_duration": 5,
+        "video_ratio": "standard",
+        "video_count": 1
+    }
+}
+output object
+
+任务输出信息。
+
+属性
+
+task_id string
+
+任务ID。
+
+task_status string
+
+任务状态。
+
+枚举值
+
+PENDING：任务排队中
+
+RUNNING：任务处理中
+
+SUSPENDED：任务挂起
+
+SUCCEEDED：任务执行成功
+
+FAILED：任务执行失败
+
+UNKNOWN：任务不存在或状态未知
+
+submit_time string
+
+任务提交时间。
+
+scheduled_time string
+
+任务执行时间。
+
+end_time string
+
+任务完成时间。
+
+video_url string
+
+视频URL。可通过此URL下载视频。
+
+code string
+
+请求失败的错误码。请求成功时不会返回此参数，详情请参见错误信息。
+
+message string
+
+请求失败的详细信息。请求成功时不会返回此参数，详情请参见错误信息。
+
+usage object
+
+输出信息统计。只对成功的结果计数。
+
+属性
+
+video_duration integer
+
+生成视频的时长，单位秒。
+
+video_count integer
+
+生成视频的数量。
+
+video_ratio string
+
+生成视频的比例。图生视频固定为standard。
+
+request_id string
+
+请求唯一标识。可用于请求明细溯源和问题排查。
+
+
+
+
+
+
+
+
+
+
+
+DashScope SDK调用
+请先确认已安装最新版DashScope SDK，否则会运行报错：安装SDK。
+
+DashScope SDK目前已支持Python和Java。
+
+SDK与HTTP接口的参数名基本一致，参数结构根据不同语言的SDK封装而定。参数说明可参考HTTP调用。
+
+由于视频模型处理时间较长，底层服务采用异步方式提供。SDK在上层进行了封装，支持同步、异步两种调用方式。
+
+图生视频耗时较长，turbo模型大约需要3-5分钟，plus模型则需7-10分钟。实际耗时取决于排队任务数量和网络状况，请您在获取结果时耐心等待。
+Python SDK调用
+同步调用异步调用
+请求示例
+ 
+from http import HTTPStatus
+# dashscope sdk >= 1.22.1
+from dashscope import VideoSynthesis
+
+def sample_call_i2v():
+    # call sync api, will return the result
+    print('please wait...')
+    rsp = VideoSynthesis.call(model='wanx2.1-i2v-turbo',
+                              prompt='一只猫在草地上奔跑',
+                              img_url='https://cdn.translate.alibaba.com/r/wanx-demo-1.png')
+    print(rsp)
+    if rsp.status_code == HTTPStatus.OK:
+        print(rsp.output.video_url)
+    else:
+        print('Failed, status_code: %s, code: %s, message: %s' %
+              (rsp.status_code, rsp.code, rsp.message))
+
+
+if __name__ == '__main__':
+    sample_call_i2v()
+响应示例
+video_url 有效期24小时，请及时下载视频。
+ 
+{
+	"status_code": 200,
+	"request_id": "aead6248-1bb3-9506-8c72-xxxxxx",
+	"code": null,
+	"message": "",
+	"output": {
+		"task_id": "3bd8b12f-da4d-4882-badb-xxxxxx",
+		"task_status": "SUCCEEDED",
+		"video_url": "https://dashscope-result-wlcb.oss-cn-wulanchabu.aliyuncs.com/aaa.mp4",
+		"submit_time": "2025-02-12 10:35:47.260",
+		"scheduled_time": "2025-02-12 10:35:48.304",
+		"end_time": "2025-02-12 10:41:13.449"
+	},
+	"usage": {
+		"video_count": 1,
+		"video_duration": 5,
+		"video_ratio": "standard"
+	}
+}
+
+
+
+
+错误码
+如果模型调用失败并返回报错信息，请参见错误信息进行解决。
+
+此API还有特定状态码，具体如下所示。
+
+
+
+
+
+HTTP状态码
+
+接口错误码（code）
+
+接口错误信息（message）
+
+含义说明
+
+400
+
+InvalidParameter
+
+InvalidParameter
+
+请求参数不合法。
+
+400
+
+IPInfringementSuspect
+
+Input data is suspected of being involved in IP infringement.
+
+输入数据（如提示词或图像）涉嫌知识产权侵权。请检查输入，确保不包含引发侵权风险的内容。
+
+400
+
+DataInspectionFailed
+
+Input data may contain inappropriate content.
+
+输入数据（如提示词或图像）可能包含敏感内容。请修改输入后重试。
+
+500
+
+InternalError
+
+InternalError
+
+服务异常。请先尝试重试，排除偶发情况。

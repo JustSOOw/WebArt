@@ -13,11 +13,11 @@
               @logout="handleLogout"
               @show-history="showHistory"
             />
-            <el-button v-else type="primary" @click="showUserDialog">
+            <el-button v-else type="primary" @click="showUserDialog" class="rounded-button">
               <el-icon><User /></el-icon>
               登录/注册
             </el-button>
-            <el-button type="primary" @click="showHistory">
+            <el-button type="primary" @click="showHistory" class="rounded-button">
               <el-icon><Picture /></el-icon>
               历史图片
             </el-button>
@@ -26,112 +26,116 @@
         
         <el-container class="main-container">
           <!-- 左侧参数控制区 -->
-          <el-aside width="400px" class="control-panel">
-            <div class="control-panel-inner">
-              <!-- 姓氏输入 -->
-              <div class="surname-input-container">
-                <h2>输入姓氏</h2>
-                <el-input
-                  v-model="surname"
-                  placeholder="请输入姓氏（1-2个汉字）"
-                  maxlength="2"
-                  show-word-limit
-                  class="surname-input"
-                />
-              </div>
-              
-              <!-- 模式选择 -->
-              <div class="mode-selector">
-                <!-- taps表，tap-pane表中项，tap-change改变选项卡触发函数 -->
-                <el-tabs v-model="activeMode" @tab-change="handleModeChange">
-                  <el-tab-pane label="预设风格" name="preset">
-                    <preset-options 
-                      @style-selected="handlePresetStyleSelected" 
-                      :loading="loading"
-                    />
-                  </el-tab-pane>
-                  <el-tab-pane label="自定义风格" name="custom">
-                    <custom-options 
-                      @custom-options-updated="handleCustomOptionsUpdated"
-                      :loading="loading"
-                    />
-                  </el-tab-pane>
-                </el-tabs>
-              </div>
-              
-              <!-- 生成按钮 -->
-              <div class="generate-button-container">
-                <el-button 
-                  type="primary" 
-                  :loading="loading" 
-                  @click="generateImage" 
-                  :disabled="!isFormValid"
-                  class="generate-button"
-                >
-                  生成图片
-                  <el-icon class="el-icon--right"><Picture /></el-icon>
-                </el-button>
-                <div class="image-count-selector">
-                  <span>生成数量:</span>
-                  <el-select v-model="imageCount" :disabled="loading">
-                    <!-- n默认从1开始 -->
-                    <el-option v-for="n in 4" :key="n" :label="n" :value="n" />
-                  </el-select>
-                </div>
-              </div>
-            </div>
-          </el-aside>
-          
-          <!-- 右侧图片展示区 -->
-          <el-main class="image-display">
-            <div class="image-preview-container">
-              <div v-if="loading" class="loading-container">
-                <el-skeleton :rows="10" animated />
-              </div>
-              <div v-else-if="currentImages.length === 0" class="empty-state">
-                <el-empty description="尚未生成图片" />
-                <p>请在左侧设置参数并点击生成按钮</p>
-              </div>
-              <div v-else class="image-preview">
-                <!-- 添加错误处理 -->
-                <template v-if="currentImages[selectedImageIndex]?.url">
-                  <img 
-                    :src="currentImages[selectedImageIndex].url" 
-                    alt="生成的姓氏图片" 
-                    class="main-image" 
-                    @error="handleImageError"
-                  />
-                </template>
-                <div v-else class="image-error">
-                  <el-alert
-                    title="图片加载失败"
-                    type="error"
-                    description="无法加载图片，可能是URL无效或图片不存在"
-                    show-icon
+          <div class="control-panel">
+            <el-card class="control-panel-card">
+              <div class="control-panel-inner">
+                <!-- 姓氏输入 -->
+                <div class="surname-input-container">
+                  <h2>输入姓氏</h2>
+                  <el-input
+                    v-model="surname"
+                    placeholder="请输入姓氏（1-2个汉字）"
+                    maxlength="2"
+                    show-word-limit
+                    class="surname-input"
                   />
                 </div>
                 
-                <div class="image-info">
-                  <p>姓氏: {{ surname }}</p>
-                  <p>风格: {{ getStyleDisplayName() }}</p>
-                  <p>生成时间: {{ formatDate(currentImages[selectedImageIndex]?.createdAt) }}</p>
+                <!-- 模式选择 -->
+                <div class="mode-selector">
+                  <!-- taps表，tap-pane表中项，tap-change改变选项卡触发函数 -->
+                  <el-tabs v-model="activeMode" @tab-change="handleModeChange">
+                    <el-tab-pane label="预设风格" name="preset">
+                      <preset-options 
+                        @style-selected="handlePresetStyleSelected" 
+                        :loading="loading"
+                      />
+                    </el-tab-pane>
+                    <el-tab-pane label="自定义风格" name="custom">
+                      <custom-options 
+                        @custom-options-updated="handleCustomOptionsUpdated"
+                        :loading="loading"
+                      />
+                    </el-tab-pane>
+                  </el-tabs>
+                </div>
+                
+                <!-- 生成按钮 -->
+                <div class="generate-button-container">
+                  <el-button 
+                    type="primary" 
+                    :loading="loading" 
+                    @click="generateImage" 
+                    :disabled="!isFormValid"
+                    class="generate-button"
+                  >
+                    生成图片
+                    <el-icon class="el-icon--right"><Picture /></el-icon>
+                  </el-button>
+                  <div class="image-count-selector">
+                    <span>生成数量:</span>
+                    <el-select v-model="imageCount" :disabled="loading">
+                      <!-- n默认从1开始 -->
+                      <el-option v-for="n in 4" :key="n" :label="n" :value="n" />
+                    </el-select>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <!-- 缩略图区域 -->
-            <div v-if="currentImages.length > 0" class="thumbnails-container">
-              <div 
-                v-for="(image, index) in currentImages" 
-                :key="index"
-                class="thumbnail"
-                :class="{ active: selectedImageIndex === index }" 
-                @click="selectedImageIndex = index"
-              >
-                <img :src="image.url" alt="缩略图" @error="handleThumbnailError($event, index)" />
+            </el-card>
+          </div>
+          
+          <!-- 右侧图片展示区 -->
+          <div class="image-display">
+            <el-card class="image-display-card">
+              <div class="image-preview-container">
+                <div v-if="loading" class="loading-container">
+                  <el-skeleton :rows="10" animated />
+                </div>
+                <div v-else-if="currentImages.length === 0" class="empty-state">
+                  <el-empty description="尚未生成图片" />
+                  <p>请在左侧设置参数并点击生成按钮</p>
+                </div>
+                <div v-else class="image-preview">
+                  <!-- 添加错误处理 -->
+                  <template v-if="currentImages[selectedImageIndex]?.url">
+                    <img 
+                      :src="currentImages[selectedImageIndex].url" 
+                      alt="生成的姓氏图片" 
+                      class="main-image" 
+                      @error="handleImageError"
+                    />
+                  </template>
+                  <div v-else class="image-error">
+                    <el-alert
+                      title="图片加载失败"
+                      type="error"
+                      description="无法加载图片，可能是URL无效或图片不存在"
+                      show-icon
+                    />
+                  </div>
+                  
+                  <div class="image-info">
+                    <p>姓氏: {{ surname }}</p>
+                    <p>风格: {{ getStyleDisplayName() }}</p>
+                    <p>生成时间: {{ formatDate(currentImages[selectedImageIndex]?.createdAt) }}</p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </el-main>
+              
+              <!-- 缩略图区域 -->
+              <div v-if="currentImages.length > 0" class="thumbnails-container">
+                <div 
+                  v-for="(image, index) in currentImages" 
+                  :key="index"
+                  class="thumbnail"
+                  :class="{ active: selectedImageIndex === index }" 
+                  @click="selectedImageIndex = index"
+                >
+                  <img :src="image.url" alt="缩略图" @error="handleThumbnailError($event, index)" />
+                </div>
+              </div>
+            </el-card>
+          </div>
         </el-container>
       </el-container>
       
@@ -1181,19 +1185,29 @@
   .main-container {
     flex: 1;
     height: calc(100vh - 70px);
+    padding: 20px;
+    background-color: var(--background-color);
+    display: flex;
   }
   
   .control-panel {
-    background-color: #fff;
-    border-right: 1px solid var(--border-color);
-    overflow-y: auto;
-    padding: 20px;
+    width: 400px;
+    padding-right: 15px;
+  }
+  
+  .control-panel-card {
+    height: 100%;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
   }
   
   .control-panel-inner {
     display: flex;
     flex-direction: column;
     gap: 24px;
+    padding: 20px;
+    height: 100%;
   }
   
   .surname-input-container {
@@ -1241,17 +1255,20 @@
   }
   
   .image-display {
+    flex: 1;
+    padding-left: 15px;
+  }
+  
+  .image-display-card {
+    height: 100%;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
-    padding: 20px;
-    background-color: var(--background-color);
   }
   
   .image-preview-container {
     flex: 1;
-    background-color: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
     padding: 20px;
     display: flex;
     flex-direction: column;
@@ -1298,7 +1315,7 @@
   .thumbnails-container {
     display: flex;
     gap: 12px;
-    margin-top: 20px;
+    margin: 0 20px 20px;
     justify-content: center;
     flex-wrap: wrap;
   }
@@ -1407,29 +1424,25 @@
   }
   
   @media (max-width: 1200px) {
-    .el-aside {
-      width: 350px !important;
+    .control-panel {
+      width: 350px;
     }
   }
   
   @media (max-width: 992px) {
     .main-container {
       flex-direction: column;
+      height: auto;
     }
     
-    .el-aside {
-      width: 100% !important;
-      border-right: none;
-      border-bottom: 1px solid var(--border-color);
+    .control-panel {
+      width: 100%;
+      padding-right: 0;
+      margin-bottom: 20px;
     }
     
-    .control-panel-inner {
-      max-width: 600px;
-      margin: 0 auto;
-    }
-    
-    .image-preview-container {
-      margin-top: 20px;
+    .image-display {
+      padding-left: 0;
     }
   }
   
@@ -1444,10 +1457,6 @@
     
     .el-header {
       padding: 0 12px;
-    }
-    
-    .main-container {
-      height: auto;
     }
     
     .thumbnail {
@@ -1649,6 +1658,18 @@
     color: #606266;
     min-width: 120px;
     text-align: center;
+  }
+  
+  .header-actions .rounded-button {
+    border-radius: 20px;
+    padding: 8px 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+  }
+  
+  .header-actions .rounded-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
   }
   </style>
   
