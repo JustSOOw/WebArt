@@ -1556,6 +1556,24 @@ export default {
       handleModelChange(newModel)
     })
 
+    // 初始化用户状态
+    const initUserState = () => {
+      if (isAuthenticated()) {
+        isLoggedIn.value = true
+        currentUser.value = getCurrentUser()
+        // 加载用户的对话列表
+        fetchUserConversations()
+      } else {
+        isLoggedIn.value = false
+        currentUser.value = null
+      }
+    }
+
+    // 在组件挂载时初始化用户状态
+    onMounted(() => {
+      initUserState()
+    })
+
     // 初始化
     onMounted(async () => {
       console.log('ChatView 已挂载');

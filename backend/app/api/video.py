@@ -20,6 +20,7 @@ from app.utils import allowed_image_file
 video_bp = Blueprint('video', __name__)
 
 @video_bp.route('/text-to-video', methods=['POST'])
+@login_required
 def text_to_video():
     """
     文本生成视频API
@@ -74,6 +75,7 @@ def text_to_video():
     })
 
 @video_bp.route('/image-to-video', methods=['POST'])
+@login_required
 def image_to_video():
     """
     图像生成视频API

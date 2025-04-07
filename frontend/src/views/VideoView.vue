@@ -700,6 +700,10 @@ export default {
       
       try {
         let response
+        const token = localStorage.getItem('auth_token')
+        if (!token) {
+          throw new Error('认证信息丢失，请重新登录')
+        }
         
         if (activeFeature.value === 'text-to-video') {
           // 对于文生视频，使用普通JSON格式
@@ -713,7 +717,11 @@ export default {
             payload.seed = parseInt(seedValue.value) // 确保种子是数字
           }
           
-          response = await axios.post('/api/video/text-to-video', payload)
+          response = await axios.post('/api/video/text-to-video', payload, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
         } else {
           // 对于图生视频，使用FormData格式
           const params = new FormData()
@@ -733,33 +741,61 @@ export default {
           // 处理图片
           if (imageFile.value) {
             params.append('image', imageFile.value)
+          } else if (imageUrl.value) {
+            // 如果是外部URL，直接传递
+            params.append('image_url', imageUrl.value)
           }
           
-          response = await axios.post('/api/video/image-to-video', params)
+          response = await axios.post('/api/video/image-to-video', params, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
         }
         
         // 处理响应
         if (response.data.success) {
+          // --- 成功路径 ---
           taskId.value = response.data.data.task_id
           videoId.value = response.data.data.video_id
           loadingText.value = '任务已提交，系统开始生成视频...'
-          loadingProgress.value = 10
+          loadingProgress.value = 10 // 成功提交后设置初始进度
           ElMessage.success('视频生成任务已提交')
-          startPollingTaskStatus()
+          startPollingTaskStatus() // 仅在成功时启动轮询
+          return // 成功时直接返回，不再执行后续代码
         } else {
-          throw new Error(response.data.message || '提交任务失败')
+          // --- 后端返回业务错误 (success: false) ---
+          // API 调用成功，但后端指示操作失败
+          // 抛出错误，由 catch 块统一处理
+          throw new Error(response.data.message || '提交任务失败，请检查输入或联系管理员')
         }
         
       } catch (error) {
+        // --- 失败路径 (网络错误, 服务器错误, 或上面抛出的业务错误) ---
         console.error('生成视频失败:', error)
-        loadingText.value = `生成失败: ${error.message || '未知错误'}`
+        
+        // 确定要显示的错误消息
+        let displayErrorMessage = '生成失败: 未知错误'
+        if (error.response && error.response.data && error.response.data.message) {
+          // 尝试从 Axios 响应中获取后端错误信息
+          displayErrorMessage = `生成失败: ${error.response.data.message}`
+        } else if (error.message) {
+          // 使用 Error 对象的消息 (包括我们自己抛出的业务错误)
+          displayErrorMessage = `生成失败: ${error.message}`
+        }
+
+        // 更新 UI 反映失败状态
+        loadingText.value = displayErrorMessage
         loadingStatus.value = 'exception'
-        loadingProgress.value = 100
-        showCheckStatusButton.value = true
-        ElMessage.error('生成视频失败: ' + (error.response?.data?.message || error.message))
-        // 确保即使失败也停止加载状态
-        // loading.value = false;
-        // 取消上面这行，失败时保持加载状态以便显示错误
+        loadingProgress.value = 100 // 标记任务结束 (虽然是失败)
+        showCheckStatusButton.value = false // 提交失败，无需检查状态按钮
+        ElMessage.error(displayErrorMessage)
+        
+        // 将 loading 状态设回 false，解除界面卡死
+        // 添加轻微延迟，让用户能看到错误提示
+        setTimeout(() => {
+            loading.value = false;
+        }, 1000); 
       }
     }
     
@@ -800,7 +836,16 @@ export default {
       
       try {
         loadingText.value = '正在检查任务状态...'
-        const response = await axios.get(`/api/video/task/${taskId.value}`)
+        const token = localStorage.getItem('auth_token')
+        if (!token) {
+          throw new Error('认证信息丢失，请重新登录')
+        }
+        
+        const response = await axios.get(`/api/video/task/${taskId.value}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
         
         if (response.data.success) {
           const taskData = response.data.data

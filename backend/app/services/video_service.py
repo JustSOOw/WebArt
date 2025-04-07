@@ -12,7 +12,7 @@ import os
 import time
 import requests
 import json
-from flask import current_app
+from flask import current_app, request
 from app import db
 from app.models import Video
 from app.utils.file_utils import save_uploaded_file, download_remote_file, allowed_video_file
@@ -21,7 +21,7 @@ from datetime import datetime
 # 尝试导入DashScope SDK
 try:
     from http import HTTPStatus
-    from dashscope import VideoSynthesis
+    from dashscope import VideoSynthesis # type: ignore
     DASHSCOPE_SDK_AVAILABLE = True
 except ImportError:
     DASHSCOPE_SDK_AVAILABLE = False
@@ -156,6 +156,7 @@ class VideoService:
             source_image = None
             if image_file:
                 # 保存上传的图片
+                # 注意：upload_folder 是绝对路径
                 upload_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'video_sources')
                 os.makedirs(upload_folder, exist_ok=True)
                 
@@ -163,11 +164,38 @@ class VideoService:
                 if not filename:
                     return None, "图片保存失败"
                 
-                # 使用本地服务器地址作为图片URL
-                # 注意：在实际生产环境中，需要将这个地址替换为可公网访问的URL
-                source_image = os.path.join(upload_folder, filename)
-                img_url = f"http://{current_app.config.get('SERVER_NAME', 'localhost')}/api/uploads/{filename}"
+                # 构建供AI访问的img_url
+                public_base_url = current_app.config.get('PUBLIC_BASE_URL')
+                # 使用正确的路径，不包含项目名称
+                relative_path_for_url = f"static/uploads/video_sources/{os.path.basename(filename)}"
+                
+                if public_base_url:
+                    # 使用配置的公开基础URL
+                    img_url = f"{public_base_url.rstrip('/')}/{relative_path_for_url}"
+                    current_app.logger.info(f"使用公开访问URL (ngrok/other): {img_url}")
+                else:
+                    # 回退到旧逻辑 (可能无法从外部访问)
+                    current_app.logger.warning("PUBLIC_BASE_URL 未在 .env 中配置，回退到本地服务器URL。这可能导致外部AI服务无法访问图片。")
+                    # 尝试从请求或配置获取主机名和端口，更健壮的回退
+                    host = request.host.split(':')[0]
+                    port = current_app.config.get('SERVER_PORT', '5000') # 假设后端运行在5000端口，如果配置了SERVER_PORT则使用
+                    scheme = request.scheme
+                    server_name = f"{host}:{port}" if port else host
+                    img_url = f"{scheme}://{server_name}/{relative_path_for_url}"
+                    current_app.logger.warning(f"回退使用的本地URL: {img_url}")
+
+                # 数据库中存储本地相对路径，供内部使用
+                source_image = os.path.join('video_sources', os.path.basename(filename)).replace('\\', '/') # 保证斜杠统一
             
+            elif data.get('image_url'):
+                # 如果直接提供了外部URL
+                img_url = data.get('image_url')
+                source_image = None # 没有本地源文件
+                current_app.logger.info(f"使用请求中提供的外部图片URL: {img_url}")
+            else:
+                # 既没有文件也没有URL，这在API层应该已经被阻止了
+                return None, "无效的图片输入"
+
             # 创建视频记录
             video = Video(
                 prompt=prompt,

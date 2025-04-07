@@ -92,6 +92,7 @@ def create_app(config_class=None):
         app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
         app.config['DASHSCOPE_API_KEY'] = os.environ.get('DASHSCOPE_API_KEY', '')
         app.config['MAX_CONTENT_LENGTH'] = 30 * 1024 * 1024  # 30MB 最大上传限制
+        app.config['PUBLIC_BASE_URL'] = os.environ.get('PUBLIC_BASE_URL', '')  # 添加公开访问URL配置
         
         # 配置上传目录
         app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(app.root_path), 'static', 'uploads')
