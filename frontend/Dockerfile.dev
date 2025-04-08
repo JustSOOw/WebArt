@@ -1,0 +1,24 @@
+FROM node:18-alpine
+
+WORKDIR /workspace/frontend
+
+# 安装依赖
+COPY package.json package-lock.json* ./
+RUN npm install --no-fund --no-audit
+
+# 复制必要的配置文件（如果存在）
+COPY vite.config.js* ./
+COPY .eslintrc.js* ./
+COPY index.html* ./
+
+# 创建public目录（如果不存在）
+RUN mkdir -p ./public
+
+# 确保vite可执行文件在PATH中
+ENV PATH="/workspace/frontend/node_modules/.bin:${PATH}"
+
+# 验证vite是否已安装
+RUN which vite || echo "vite not found" && npm list vite
+
+# 开发环境启动命令
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"] 

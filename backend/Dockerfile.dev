@@ -1,0 +1,18 @@
+FROM python:3.11-slim
+
+# 设置工作目录
+WORKDIR /workspace/backend
+
+# 安装开发依赖，优化pip缓存
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir watchdog[watchmedo] \
+    && rm -rf /root/.cache/pip
+
+# 不复制代码，将通过卷挂载
+# 这样可以实现代码修改后的热重载
+
+EXPOSE 5000
+
+# 使用watchdog监视文件变化并自动重启服务
+CMD ["sh", "-c", "python init_db.py && python -m flask run --host=0.0.0.0 --port=5000"] 
