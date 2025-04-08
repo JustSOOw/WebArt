@@ -42,9 +42,7 @@ docker-compose.override.yml
 .temp/
 
 #开发环境
-*.dev
-*dev.*
-*.db
+wordart.db
 .cursor/*
 *.log
 
@@ -80,3 +78,4 @@ Thumbs.db
 
 #生产环境
 docker-compose.prod.yml
+backend/data/wordart.db

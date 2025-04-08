@@ -65,6 +65,9 @@ start_frontend() {
         # 可以选择在这里退出脚本，如果前端是必需的
         # exit 1
     else
+        # 确保node_modules/.bin在PATH中
+        export PATH="/workspace/frontend/node_modules/.bin:$PATH"
+        
         echo -e "${YELLOW}正在启动前端开发服务器 (npm run dev)...${NC}"
         npm run dev &
         FRONTEND_PID=$! # 保存前端进程的PID
