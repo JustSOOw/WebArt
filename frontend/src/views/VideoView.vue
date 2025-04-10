@@ -920,25 +920,50 @@ export default {
       }
     })
     
-    // 修改上传图片处理方法，避免重复使用image_url
+    // 修改上传图片处理方法，增加格式和分辨率校验
     const handleImageChange = (file) => {
-      const isImage = file.raw.type.indexOf('image/') !== -1
-      if (!isImage) {
-        ElMessage.error('只能上传图片文件!')
-        return
+      const allowedFormats = ['image/jpeg', 'image/png', 'image/bmp', 'image/webp'];
+      const isFormatAllowed = allowedFormats.includes(file.raw.type);
+      if (!isFormatAllowed) {
+        ElMessage.error('不支持的图片格式！请上传 JPG, PNG, BMP, WEBP 格式的图片。');
+        return;
       }
       
-      const isLt10M = file.size / 1024 / 1024 < 10
+      const isLt10M = file.size / 1024 / 1024 < 10;
       if (!isLt10M) {
-        ElMessage.error('图片大小不能超过10MB!')
-        return
+        ElMessage.error('图片大小不能超过10MB!');
+        return;
       }
       
-      // 保存文件引用
-      imageFile.value = file.raw
-      
-      // 创建预览URL
-      imageUrl.value = URL.createObjectURL(file.raw)
+      // 读取图片获取分辨率
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const width = img.width;
+          const height = img.height;
+          
+          if (width < 360 || width > 2000 || height < 360 || height > 2000) {
+            ElMessage.error('图片分辨率不符合要求！边长需要在 360 到 2000 像素之间。');
+            imageUrl.value = ''; // 清除无效的预览
+            imageFile.value = null; // 清除无效的文件引用
+          } else {
+            // 验证通过，保存文件引用和创建预览URL
+            imageFile.value = file.raw;
+            imageUrl.value = URL.createObjectURL(file.raw);
+          }
+        };
+        img.onerror = () => {
+            ElMessage.error('无法读取图片信息，请检查图片文件。');
+            imageUrl.value = ''; 
+            imageFile.value = null;
+        };
+        img.src = e.target.result;
+      };
+      reader.onerror = () => {
+          ElMessage.error('读取图片文件失败。');
+      };
+      reader.readAsDataURL(file.raw);
     }
     
     // 选择文生视频模型后自动关闭选择界面
