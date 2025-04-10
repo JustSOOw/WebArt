@@ -36,10 +36,15 @@ class Image(db.Model):
         return f'<Image {self.id} - {self.surname}>'
     
     def to_dict(self):
+        # 动态修正旧的URL，移除可能存在的 /api 前缀
+        corrected_url = self.url
+        if corrected_url and corrected_url.startswith('/api/static/'):
+            corrected_url = corrected_url.replace('/api/static/', '/static/', 1)
+            
         return {
             'id': self.id,
             'task_id': self.task_id,
-            'url': self.url,
+            'url': corrected_url, # 返回修正后的URL
             'original_url': self.original_url,
             'surname': self.surname,
             'style': self.style,

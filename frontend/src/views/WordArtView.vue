@@ -464,7 +464,7 @@
           console.log('提交生成请求，payload:', payload);
           
           // 提交任务
-          const taskResponse = await fetch('/api/generate', {
+          const taskResponse = await fetch('/api/wordart/generate', {
             method: 'POST',
             headers,
             body: JSON.stringify(payload)
@@ -510,11 +510,6 @@
             allHistoryImages.value = [...newImages, ...allHistoryImages.value]
             historyImages.value = [...newImages, ...historyImages.value]
             
-            // 如果用户已登录，保存图片到服务器
-            if (isLoggedIn.value) {
-              saveImagesToServer(newImages)
-            }
-            
             // 如果历史对话框是打开的，确保分页状态正确
             if (historyDialogVisible.value) {
               // 若添加了新内容，自动跳到第一页以显示最新内容
@@ -525,6 +520,11 @@
               
               console.log(`生成新图片后，总页数: ${totalPages.value}`)
             }
+            
+            // 不再需要在前端触发保存，后端 get_task_status 会自动保存
+            // if (isLoggedIn.value) {
+            //   saveImagesToServer(newImages)
+            // }
             
             ElMessage.success('图片生成成功')
           } else {
@@ -546,7 +546,7 @@
         
         while (attempts < maxAttempts) {
           console.log(`轮询任务状态，第 ${attempts + 1} 次尝试`);
-          const response = await fetch(`/api/tasks/${taskId}`)
+          const response = await fetch(`/api/wordart/tasks/${taskId}`)
           
           if (!response.ok) {
             const errorText = await response.text();
@@ -662,7 +662,7 @@
         try {
           console.log('获取所有历史图片...')
           // 请求所有图片，使用一个很大的页面大小
-          const response = await fetch(`/api/images?page=1&per_page=1000`, {
+          const response = await fetch('/api/wordart/images?page=1&per_page=1000', {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
             }
@@ -743,7 +743,7 @@
         if (!isLoggedIn.value) return
         
         try {
-          const response = await fetch(`/api/images?page=${currentPage.value}&per_page=${pageSize.value}`, {
+          const response = await fetch('/api/wordart/images?page=${currentPage.value}&per_page=${pageSize.value}', {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
             }
@@ -840,7 +840,8 @@
       // 监听历史记录变化，保存到本地存储
       watch(historyImages, saveHistoryToLocalStorage, { deep: true })
       
-      // 保存图片到服务器
+      // 保存图片到服务器 - 不再需要此函数，后端 get_task_status 会自动保存
+      /*
       const saveImagesToServer = async (images) => {
         if (!isLoggedIn.value || !images || images.length === 0) return
         
@@ -848,7 +849,7 @@
           // 构建保存图片的请求数据
           const saveData = images.map(image => ({
             task_id: image.taskId,
-            url: image.url,
+            url: image.url, // 注意：这里可能是远程 URL
             surname: image.surname,
             style: activeMode.value === 'preset' ? presetStyle.value : 'diy',
             style_name: image.styleName,
@@ -860,7 +861,7 @@
           }))
           
           // 发送保存请求
-          await fetch('/api/images/save', {
+          await fetch('/api/wordart/images/save', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -872,6 +873,7 @@
           console.error('保存图片到服务器失败:', error)
         }
       }
+      */
       
       const handleImageError = (event) => {
         console.error('主图片加载失败:', event);
@@ -1096,7 +1098,6 @@
         fetchAllUserImages,
         updateCurrentPageImages,
         updateTotalImagesCount,
-        saveImagesToServer,
         handleImageError,
         handleThumbnailError,
         downloadHistoryImages,

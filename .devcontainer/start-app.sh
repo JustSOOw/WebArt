@@ -65,6 +65,25 @@ start_frontend() {
         # 可以选择在这里退出脚本，如果前端是必需的
         # exit 1
     else
+        # 首先安装依赖并确保成功
+        echo -e "${YELLOW}正在安装前端依赖 (npm install)...${NC}"
+        npm install
+        
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}错误: 安装依赖失败。请检查错误信息。${NC}"
+            FRONTEND_PID=""
+            return 1
+        fi
+        
+        # 确认node_modules是否存在且不为空
+        if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules)" ]; then
+            echo -e "${RED}错误: node_modules目录不存在或为空。npm install可能未成功完成。${NC}"
+            FRONTEND_PID=""
+            return 1
+        fi
+        
+        echo -e "${GREEN}依赖安装成功，node_modules中有$(ls -1 node_modules | wc -l)个包${NC}"
+        
         # 确保node_modules/.bin在PATH中
         export PATH="/workspace/frontend/node_modules/.bin:$PATH"
         

@@ -140,8 +140,11 @@ def download_remote_image(url, subfolder='images'):
         # 创建一个唯一的文件名
         unique_filename = f"{uuid.uuid4().hex}{ext}"
         
-        # 确保目录存在
-        upload_folder = os.path.join(current_app.root_path, 'static/uploads', subfolder)
+        # 确保目录存在 (使用项目根目录下的 static 文件夹)
+        # current_app.root_path 指向 backend/app
+        # os.path.dirname(current_app.root_path) 指向 backend
+        project_root = os.path.dirname(current_app.root_path)
+        upload_folder = os.path.join(project_root, 'static', 'uploads', subfolder)
         os.makedirs(upload_folder, exist_ok=True)
         
         # 保存文件
@@ -163,8 +166,8 @@ def download_remote_image(url, subfolder='images'):
             if ext.lower() in ['.jpg', '.jpeg']:
                 clean_exif(file_path)
             
-            # 返回可访问的URL
-            return f"/api/static/uploads/{subfolder}/{unique_filename}", None
+            # 返回可访问的URL (移除 /api 前缀)
+            return f"/static/uploads/{subfolder}/{unique_filename}", None
             
         except Exception as e:
             # 如果不是有效图片，删除文件并返回错误

@@ -178,34 +178,48 @@ def save_images():
         return jsonify({'error': '图片数据格式错误'}), 400
     
     saved_images = []
+    new_images_to_add = []
+    processed_urls = set() # 避免重复处理同一个远程URL
     
     try:
         for img_data in images_data:
-            # 检查必要字段
-            if 'task_id' not in img_data or 'url' not in img_data or 'surname' not in img_data:
-                continue
+            remote_url = img_data.get('url')
+            task_id = img_data.get('task_id')
+
+            if not remote_url or not task_id:
+                 current_app.logger.warning(f"用户 {current_user.id} 尝试保存图片时跳过无效数据: {img_data}")
+                 continue
+
+            if remote_url in processed_urls:
+                continue # 跳过已处理的URL
+            processed_urls.add(remote_url)
             
-            # 检查图片是否已存在
+            # 下载远程图片到本地服务器 (保存到 images 子文件夹)
+            local_url_tuple = download_remote_image(remote_url, 'images')
+            local_url = local_url_tuple[0]
+            error_message = local_url_tuple[1]
+            
+            if local_url is None:
+                current_app.logger.error(f"用户 {current_user.id} 保存图片失败: 无法下载或验证 {remote_url}。错误: {error_message}")
+                continue # 跳过这个图片的保存
+            
+            # 检查图片是否已存在 (使用本地URL和任务ID)
             existing_image = Image.query.filter_by(
-                task_id=img_data['task_id'],
-                url=img_data['url'],
+                task_id=task_id,
+                url=local_url, # 使用本地URL检查
                 user_id=current_user.id
             ).first()
             
             if existing_image:
-                saved_images.append(existing_image.to_dict())
-                continue
-            
-            # 下载远程图片到本地服务器
-            remote_url = img_data['url']
-            local_url = download_remote_image(remote_url, 'generated')
+                saved_images.append(existing_image.to_dict()) # 将已存在的图片加入返回列表
+                continue # 跳过创建
             
             # 创建新图片记录
             image = Image(
-                task_id=img_data['task_id'],
-                url=local_url,
-                original_url=remote_url,  # 保存原始URL以备参考
-                surname=img_data['surname'],
+                task_id=task_id,
+                url=local_url, # 使用验证后的本地URL
+                original_url=remote_url,
+                surname=img_data.get('surname'),
                 style=img_data.get('style'),
                 style_name=img_data.get('style_name'),
                 prompt=img_data.get('prompt'),
@@ -217,20 +231,27 @@ def save_images():
                 user_id=current_user.id
             )
             
-            db.session.add(image)
-            saved_images.append(image.to_dict())
+            new_images_to_add.append(image) # 收集新图片对象
         
-        db.session.commit()
+        # 批量添加新图片并提交
+        if new_images_to_add:
+            db.session.add_all(new_images_to_add)
+            db.session.commit()
+            # 将新保存的图片添加到返回列表
+            for img in new_images_to_add:
+                 saved_images.append(img.to_dict())
         
         return jsonify({
-            'message': f'成功保存 {len(saved_images)} 张图片',
+            'message': f'成功处理 {len(images_data)} 个图片请求，保存/更新了 {len(saved_images)} 张图片记录',
             'images': saved_images
         })
     
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error saving images: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error(f"用户 {current_user.id} 保存图片时发生错误: {str(e)}")
+        import traceback
+        current_app.logger.error(traceback.format_exc()) # 记录完整的回溯信息
+        return jsonify({'error': f'保存图片时发生服务器内部错误: {str(e)}'}), 500
 
 def get_style_display_name(style_code):
     """
@@ -256,31 +277,50 @@ def get_style_display_name(style_code):
 
 def save_task_results(task_id, results, task_info=None):
     """
-    保存任务结果到数据库
+    保存任务结果到数据库 (由 get_task_status 调用)
     """
-    # 检查任务是否已保存
-    existing_images = Image.query.filter_by(task_id=task_id).first()
-    if existing_images:
-        return
-    
     # 获取任务相关信息
     if task_info is None:
         task_info = {}
     
-    # 获取用户ID
-    user_id = None
-    if current_user.is_authenticated:
-        user_id = current_user.id
+    # 获取用户ID (如果用户已登录)
+    user_id = current_user.id if current_user.is_authenticated else None
+    
+    images_to_add = [] # 收集需要添加的新图片
     
     # 保存每个图片
     for result in results:
-        # 下载远程图片到本地服务器
-        remote_url = result['url']
-        local_url = download_remote_image(remote_url, 'generated')
+        remote_url = result.get('url')
+        if not remote_url:
+            current_app.logger.warning(f"任务 {task_id} 的结果中缺少 URL: {result}")
+            continue
         
+        # 精确重复检查：检查是否已存在具有相同 task_id 和 original_url 的记录
+        existing_image = Image.query.filter_by(
+            task_id=task_id,
+            original_url=remote_url,
+            # 如果需要区分用户，可以加上 user_id (取决于业务逻辑)
+            # user_id=user_id 
+        ).first()
+
+        if existing_image:
+            current_app.logger.info(f"任务 {task_id} 的图片 {remote_url} 已存在，跳过保存。")
+            continue # 如果已存在，跳过此图片
+
+        # 下载远程图片到本地服务器 (保存到 images 子文件夹)
+        local_url_tuple = download_remote_image(remote_url, 'images')
+        
+        # 检查下载是否成功
+        local_url = local_url_tuple[0]
+        error_message = local_url_tuple[1]
+        
+        if local_url is None:
+            current_app.logger.error(f"保存任务 {task_id} 的图片失败: 无法下载或验证 {remote_url}。错误: {error_message}")
+            continue # 跳过这个图片的保存
+
         image = Image(
             task_id=task_id,
-            url=local_url,
+            url=local_url, # 使用解包后的 URL
             original_url=remote_url,  # 保存原始URL以备参考
             surname=task_info.get('surname', ''),
             style=task_info.get('style', ''),
@@ -293,7 +333,14 @@ def save_task_results(task_id, results, task_info=None):
             text_inverse=task_info.get('text_inverse', False),
             user_id=user_id
         )
-        
-        db.session.add(image)
+        images_to_add.append(image)
     
-    db.session.commit() 
+    # 批量添加新图片
+    if images_to_add:
+        try:
+            db.session.add_all(images_to_add)
+            db.session.commit()
+            current_app.logger.info(f"为任务 {task_id} 成功保存了 {len(images_to_add)} 张新图片。")
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"为任务 {task_id} 批量保存图片时出错: {str(e)}") 

@@ -4,7 +4,8 @@ WORKDIR /workspace/frontend
 
 # 安装依赖
 COPY package.json package-lock.json* ./
-RUN npm install --no-fund --no-audit
+# 移除这行，由start-app.sh负责安装
+# RUN npm install --no-fund --no-audit
 
 # 复制必要的配置文件（如果存在）
 COPY vite.config.js* ./
@@ -17,8 +18,8 @@ RUN mkdir -p ./public
 # 确保vite可执行文件在PATH中
 ENV PATH="/workspace/frontend/node_modules/.bin:${PATH}"
 
-# 验证vite是否已安装
-RUN which vite || echo "vite not found" && npm list vite
+# 不再验证vite是否已安装，因为此时node_modules还不存在
+# RUN which vite || echo "vite not found" && npm list vite
 
-# 开发环境启动命令
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"] 
+# 开发环境启动命令 - 这会被start-app.sh覆盖
+CMD ["echo", "请使用start-app.sh启动前端服务"] 
