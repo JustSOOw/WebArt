@@ -10,6 +10,9 @@ RUN npm ci --no-fund --no-audit
 # 复制源代码
 COPY . .
 
+# 确保 vite 脚本有执行权限
+RUN chmod +x /app/node_modules/.bin/vite
+
 # 构建前端应用
 RUN npm run build
 
