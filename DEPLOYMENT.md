@@ -23,7 +23,7 @@
 2. 初始化证书：
    ```bash
    sudo docker-compose up -d nginx
-   sudo docker-compose run --rm certbot certonly --webroot -w /var/www/certbot -d yourdomain.com -d www.yourdomain.com
+   sudo docker-compose run --rm certbot certonly --webroot -w /var/www/certbot -d furdow.com -d www.furdow.com
    ```
 
 3. 一旦获取到证书，恢复HTTPS配置（取消注释）并重启服务
