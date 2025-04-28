@@ -37,9 +37,9 @@ EXPOSE 5000
 
 # 创建启动脚本
 RUN echo '#!/bin/sh\n\
-    python init_db.py\n\
+python init_db.py\n\
     gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 "app:create_app()"\n\
-    ' > /app/start.sh && chmod +x /app/start.sh
+' > /app/start.sh && chmod +x /app/start.sh
 
 # 启动命令
 CMD ["/app/start.sh"]
