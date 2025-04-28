@@ -10,10 +10,10 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# 复制依赖文件并安装
+# 复制依赖文件并安装 (使用清华 TUNA 镜像源)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir gunicorn && \
+RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt && \
+    pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple gunicorn && \
     rm -rf /root/.cache/pip
 
 # 创建必要的目录结构
