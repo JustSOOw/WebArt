@@ -40,6 +40,15 @@
     >
       <el-icon><Menu /></el-icon>
     </el-button>
+
+    <!-- Theme Toggle Button -->
+    <el-button
+      class="theme-toggle-button"
+      type="primary"
+      @click="toggleTheme"
+    >
+      Toggle Theme
+    </el-button>
   </div>
 </template>
 
@@ -56,7 +65,7 @@ export default {
     ChatDotRound,
     VideoPlay
   },
-  emits: ['navigation-toggle'],
+  emits: ['navigation-toggle', 'theme-toggle'],
   setup(props, { emit }) {
     const router = useRouter()
     const route = useRoute()
@@ -73,12 +82,17 @@ export default {
       // 路由跳转已由el-menu的router属性处理
       drawerVisible.value = false
     }
+
+    const toggleTheme = () => {
+      emit('theme-toggle')
+    }
     
     return {
       drawerVisible,
       activeRoute,
       toggleDrawer,
-      handleSelect
+      handleSelect,
+      toggleTheme
     }
   }
 }
@@ -87,6 +101,14 @@ export default {
 <style scoped>
 .app-navigation {
   position: relative;
+}
+
+.theme-toggle-button {
+  position: fixed;
+  top: 150px; /* Adjusted to be below the navigation toggle */
+  right: 20px;
+  z-index: 999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 .navigation-toggle {

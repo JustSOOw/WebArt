@@ -1,7 +1,7 @@
 <template>
-  <div class="app-wrapper">
+  <div class="app-wrapper" :class="{ 'dark-theme': currentTheme === 'dark' }">
     <!-- 导航组件 -->
-    <app-navigation @navigation-toggle="handleNavigationToggle" />
+    <app-navigation @navigation-toggle="handleNavigationToggle" @theme-toggle="toggleTheme" />
     
     <!-- 路由视图容器 -->
     <router-view v-slot="{ Component }">
@@ -13,7 +13,7 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import AppNavigation from './components/common/AppNavigation.vue'
 
 export default {
@@ -23,14 +23,29 @@ export default {
   },
   setup() {
     const isNavigationOpen = ref(false)
-    
+    const currentTheme = ref('light') // Initialize currentTheme
+
     const handleNavigationToggle = (isOpen) => {
       isNavigationOpen.value = isOpen
     }
+
+    const toggleTheme = () => {
+      currentTheme.value = currentTheme.value === 'light' ? 'dark' : 'light'
+      localStorage.setItem('app-theme', currentTheme.value)
+    }
+
+    onMounted(() => {
+      const savedTheme = localStorage.getItem('app-theme')
+      if (savedTheme) {
+        currentTheme.value = savedTheme
+      }
+    })
     
     return {
       isNavigationOpen,
-      handleNavigationToggle
+      handleNavigationToggle,
+      currentTheme,
+      toggleTheme
     }
   }
 }
@@ -50,6 +65,31 @@ export default {
   --text-color-secondary: #606266;
   --border-radius: 12px;
   --box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+
+  /* Dark Theme Variables */
+  --primary-color-dark: #79bbff;
+  --success-color-dark: #85ce61;
+  --warning-color-dark: #ebb563;
+  --danger-color-dark: #f78989;
+  --info-color-dark: #a6a9ad;
+  --border-color-dark: #4C4C4C;
+  --background-color-dark: #121212;
+  --text-color-dark: #E0E0E0;
+  --text-color-secondary-dark: #B0B0B0;
+}
+
+.dark-theme {
+  --primary-color: var(--primary-color-dark);
+  --success-color: var(--success-color-dark);
+  --warning-color: var(--warning-color-dark);
+  --danger-color: var(--danger-color-dark);
+  --info-color: var(--info-color-dark);
+  --border-color: var(--border-color-dark);
+  --background-color: var(--background-color-dark);
+  --text-color: var(--text-color-dark);
+  --text-color-secondary: var(--text-color-secondary-dark);
+  /* Ensure box-shadow also adapts if needed, or is removed/toned down for dark mode */
+  --box-shadow: 0 2px 12px rgba(255, 255, 255, 0.1); /* Lighter shadow for dark bg */
 }
 
 * {
