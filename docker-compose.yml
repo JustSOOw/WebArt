@@ -1,5 +1,3 @@
-
-
 services:
   frontend:
     build:
@@ -56,8 +54,8 @@ services:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
     # 暂时注释掉 entrypoint，以便运行 certonly 命令
-    # entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-    entrypoint: ["tail", "-f", "/dev/null"]
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    # entrypoint: ["tail", "-f", "/dev/null"] # This was for manual certonly
 
 networks:
   app-network:
