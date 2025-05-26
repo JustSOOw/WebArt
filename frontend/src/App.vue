@@ -1,7 +1,17 @@
+<!--
+ * @Author: JustSOOw wang813104@outlook.com
+ * @Date: 2025-03-05 22:52:14
+ * @LastEditors: JustSOOw wang813104@outlook.com
+ * @LastEditTime: 2025-05-26 14:47:01
+ * @FilePath: \WebArt\frontend\src\App.vue
+ * @Description: 
+ * 
+ * Copyright (c) 2025 by Furdow, All Rights Reserved. 
+-->
 <template>
-  <div class="app-wrapper" :class="{ 'dark-theme': currentTheme === 'dark' }">
+  <div class="app-wrapper">
     <!-- 导航组件 -->
-    <!-- <app-navigation @navigation-toggle="handleNavigationToggle" @theme-toggle="toggleTheme" /> -->
+    <app-navigation @navigation-toggle="handleNavigationToggle" />
     
     <!-- 路由视图容器 -->
     <router-view v-slot="{ Component }">
@@ -14,38 +24,23 @@
 
 <script>
 import { ref, onMounted } from 'vue'
-// import AppNavigation from './components/common/AppNavigation.vue'
+import AppNavigation from './components/common/AppNavigation.vue'
 
 export default {
   name: 'App',
   components: {
-    // AppNavigation
+    AppNavigation
   },
   setup() {
-    // const isNavigationOpen = ref(false)
-    const currentTheme = ref('light') // Initialize currentTheme
+    const isNavigationOpen = ref(false)
 
-    // const handleNavigationToggle = (isOpen) => {
-    //   isNavigationOpen.value = isOpen
-    // }
-
-    const toggleTheme = () => {
-      currentTheme.value = currentTheme.value === 'light' ? 'dark' : 'light'
-      localStorage.setItem('app-theme', currentTheme.value)
+    const handleNavigationToggle = (isOpen) => {
+      isNavigationOpen.value = isOpen
     }
 
-    onMounted(() => {
-      const savedTheme = localStorage.getItem('app-theme')
-      if (savedTheme) {
-        currentTheme.value = savedTheme
-      }
-    })
-    
     return {
-      // isNavigationOpen,
-      // handleNavigationToggle,
-      currentTheme,
-      toggleTheme
+      isNavigationOpen,
+      handleNavigationToggle
     }
   }
 }
@@ -76,20 +71,6 @@ export default {
   --background-color-dark: #121212;
   --text-color-dark: #E0E0E0;
   --text-color-secondary-dark: #B0B0B0;
-}
-
-.dark-theme {
-  --primary-color: var(--primary-color-dark);
-  --success-color: var(--success-color-dark);
-  --warning-color: var(--warning-color-dark);
-  --danger-color: var(--danger-color-dark);
-  --info-color: var(--info-color-dark);
-  --border-color: var(--border-color-dark);
-  --background-color: var(--background-color-dark);
-  --text-color: var(--text-color-dark);
-  --text-color-secondary: var(--text-color-secondary-dark);
-  /* Ensure box-shadow also adapts if needed, or is removed/toned down for dark mode */
-  --box-shadow: 0 2px 12px rgba(255, 255, 255, 0.1); /* Lighter shadow for dark bg */
 }
 
 * {
