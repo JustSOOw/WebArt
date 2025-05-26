@@ -1,7 +1,7 @@
 <template>
   <div class="app-wrapper" :class="{ 'dark-theme': currentTheme === 'dark' }">
     <!-- 导航组件 -->
-    <app-navigation @navigation-toggle="handleNavigationToggle" @theme-toggle="toggleTheme" />
+    <!-- <app-navigation @navigation-toggle="handleNavigationToggle" @theme-toggle="toggleTheme" /> -->
     
     <!-- 路由视图容器 -->
     <router-view v-slot="{ Component }">
@@ -14,20 +14,20 @@
 
 <script>
 import { ref, onMounted } from 'vue'
-import AppNavigation from './components/common/AppNavigation.vue'
+// import AppNavigation from './components/common/AppNavigation.vue'
 
 export default {
   name: 'App',
   components: {
-    AppNavigation
+    // AppNavigation
   },
   setup() {
-    const isNavigationOpen = ref(false)
+    // const isNavigationOpen = ref(false)
     const currentTheme = ref('light') // Initialize currentTheme
 
-    const handleNavigationToggle = (isOpen) => {
-      isNavigationOpen.value = isOpen
-    }
+    // const handleNavigationToggle = (isOpen) => {
+    //   isNavigationOpen.value = isOpen
+    // }
 
     const toggleTheme = () => {
       currentTheme.value = currentTheme.value === 'light' ? 'dark' : 'light'
@@ -42,8 +42,8 @@ export default {
     })
     
     return {
-      isNavigationOpen,
-      handleNavigationToggle,
+      // isNavigationOpen,
+      // handleNavigationToggle,
       currentTheme,
       toggleTheme
     }
