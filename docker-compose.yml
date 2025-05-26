@@ -3,6 +3,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.build
+      target: build
     volumes:
       - frontend_build:/app/dist
     env_file:
